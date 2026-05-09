@@ -170,9 +170,9 @@
 
 /* ВЫДЕЛЕННЫЙ ВИДЖЕТ (ГОЛУБОЙ) */
 .rgthree-mock-widget.selected {
-    background: #2165e479 !important;
+    background: rgba(0, 120, 212, 0.2) !important;
     color: #fff !important;
-    border-color: rgba(100, 110, 255, 0.712) !important;
+    border-color: #0078d4 !important;
     box-shadow: 0 0 15px rgba(0, 120, 212, 0.4) !important;
 }
 
