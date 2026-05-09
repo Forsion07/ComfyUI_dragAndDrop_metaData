@@ -63,34 +63,74 @@ function isFeatureEnabled() {
 app.registerExtension({
     name: "dragAndDrop_metaData",
     async setup() {
+        // 1. CSS (ваш код без изменений)
         const cssUrl = new URL("./nodeMenu.css", import.meta.url).href;
-        const existing = document.querySelector(`link[href="${cssUrl}"]`);
-        if (existing) {
-            console.log("[CSS] already loaded");
-            return;
+        if (!document.querySelector(`link[href="${cssUrl}"]`)) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.type = "text/css";
+            link.href = cssUrl;
+            document.head.appendChild(link);
         }
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.type = "text/css";
-        link.href = cssUrl;
-        document.head.appendChild(link);
-    },
-    async beforeRegisterNodeDef(nodeType, nodeData) {
 
-        const onDragOver = nodeType.prototype.onDragOver;
-        nodeType.prototype.onDragOver = function (e) {
-            let handled = onDragOver?.apply?.(this, [...arguments]);
-            if (handled != null) return handled;
-            return (!!this.widgets?.length && isFeatureEnabled()) || false;
+        // 2. Патчим все существующие ноды и подписываемся на новые
+        const patchNode = (node) => {
+            // Работаем только с нодами, у которых есть виджеты
+            if (!node.widgets || node.widgets.length === 0) return;
+
+            // Проверяем, не пропатчена ли уже (чтобы не дублировать)
+            if (node._dragAndDropPatched) return;
+            node._dragAndDropPatched = true;
+
+
+            // Сохраняем оригинальные методы (могут быть из прототипа или собственные)
+            const origOnDragOver = node.onDragOver;
+            const origOnDragDrop = node.onDragDrop;
+
+            // Переопределяем onDragOver
+            node.onDragOver = function (e) {
+                // Сначала даём шанс оригинальному обработчику (например, от других расширений)
+                let handled = origOnDragOver?.apply(this, arguments);
+                if (handled) return true;
+                // Наше условие: разрешаем, если есть виджеты и функция не заблокирована
+                return (!!this.widgets?.length && isFeatureEnabled()) || false;
+            };
+
+            // Переопределяем onDragDrop
+            node.onDragDrop = async function (e) {
+                // Вызываем оригинальный метод (если есть) и проверяем, обработал ли он событие
+                const alreadyHandled = await origOnDragDrop?.apply(this, arguments);
+                if (alreadyHandled) return alreadyHandled;
+                // Если нет — выполняем нашу логику импорта
+                return importMetaData(this, e);
+            };
+
+            console.log(`[dragAndDrop_metaData] Patched node: ${node.type} #${node.id}`);
         };
 
-        const onDragDrop = nodeType.prototype.onDragDrop;
-        nodeType.prototype.onDragDrop = async function (e) {
-            const alreadyHandled = await onDragDrop?.apply?.(this, [...arguments]);
-            if (alreadyHandled) return alreadyHandled;
-            return importIndividualNodesInnerOnDragDrop(this, e);
+        // Применяем патч ко всем нодам, которые уже есть на сцене (например, после загрузки сохранения)
+        if (app.graph && app.graph._nodes) {
+            for (const node of app.graph._nodes) {
+                patchNode(node);
+            }
+        }
+
+        // Подписываемся на добавление новых нод в реальном времени
+        const onNodeAdded = (node) => {
+            // Небольшая задержка, чтобы нода точно достроила свои виджеты и внутренние обработчики
+            setTimeout(() => patchNode(node), 0);
+        };
+        app.graph.onNodeAdded = onNodeAdded;
+
+        // Очистка при выгрузке расширения (на всякий случай)
+        this._cleanup = () => {
+            app.graph.onNodeAdded = null;
         };
     },
+    // beforeRegisterNodeDef не используем, он мешал
+    async beforeRegisterNodeDef() {
+        // оставляем пустым, чтобы не было ошибки, если где-то вызывается
+    }
 });
 
 function toNodeLabel(node) {
@@ -840,7 +880,7 @@ function applyCandidateToNode(targetNode, result) {
     });
 }
 
-async function importIndividualNodesInnerOnDragDrop(node, e) {
+async function importMetaData(node, e) {
     if (!node.widgets?.length || !isFeatureEnabled()) return false;
 
     const { workflow, prompt } = await extractWorkflowFromDragEvent(e);
