@@ -1,23 +1,15 @@
-/* --- 1. ГЛАВНЫЕ КОНТЕЙНЕРЫ (ACRYLIC GLASS) --- */
 #rgthree-primitive-import-menu,
 #rgthree-mapping-proxy-panel {
     position: fixed !important;
     z-index: 100000 !important;
-
-    /* Прозрачный фон и размытие */
     background: rgba(20, 20, 20, 0.7) !important;
     backdrop-filter: blur(12px) saturate(160%) !important;
     -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
-
-    /* Граница, которая заменяет before */
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
-
     border-radius: 12px !important;
     padding: 12px !important;
     color: #eee !important;
-
-    /* Чтобы фон не двоился при скролле */
     background-attachment: local !important;
     overflow-y: auto;
 }
@@ -33,14 +25,12 @@
     box-sizing: border-box !important;
     padding: 12px 12px 12px 12px !important
 }
-/* --- 2. ЗАГОЛОВКИ И СКРОЛЛ --- */
+
 .rgthree-mock-node-container {
     overflow-y: auto !important;
     overflow-x: visible !important;
-    /* РАЗРЕШАЕМ выход за границы по горизонтали */
     flex: 1 1 auto;
     flex-grow: 1;
-    /* Занимает всё свободное место */
     padding: 10px 15px !important;
     margin: 0 -10px;
     display: flex;
@@ -48,7 +38,6 @@
     gap: 1px;
     padding-right: 6px;
     margin-bottom: 8px;
-    /* Расстояние между нодами, чтобы не слипались */
 }
 .rgthree-mock-node-container::-webkit-scrollbar {
     width: 6px;
@@ -80,56 +69,43 @@
     border-radius: 10px;
 }
 
-/* --- 3. НОДЫ-КАНДИДАТЫ --- */
+
 .rgthree-mock-node {
     flex-shrink: 0 !important;
     width: 100%;
     box-sizing: border-box;
-    background: rgba(0, 0, 0, 0.5) !important; /* Тёмное тело ноды */
+    background: rgba(0, 0, 0, 0.5) !important;
     border: 1px solid rgba(255, 255, 255, 0.05) !important;
     border-radius: 8px !important;
     margin-bottom: 12px !important;
     overflow: hidden;
-
-    /* Плавность для всех изменений */
     transition:
         transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
         box-shadow 0.25s ease,
         background-color 0.2s ease,
         filter 0.25s ease !important;
-
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .rgthree-mock-node:hover {
     transform: scale(1.03) translateY(-2px) !important;
-    /* Увеличиваем и приподнимаем */
     background: rgba(255, 255, 255, 0.08) !important;
-    /* Легкая подсветка */
     border-color: rgba(255, 255, 255, 0.2) !important;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6) !important;
-    /* Явная глубокая тень */
     z-index: 10;
-    /* Чтобы была поверх соседей */
 }
 
 #rgthree-primitive-import-menu:has(.rgthree-mock-node:hover) .rgthree-mock-node:not(:hover) {
     transform: scale(0.98) !important;
-    /* Слегка уменьшаем остальные */
-    /*filter: blur(1px) brightness(0.7) !important;
-    /* Слегка приглушаем их */
     opacity: 0.9;
 }
 
-/* Чтобы нода не светилась, когда наведен конкретный виджет */
 .rgthree-mock-node:has(.rgthree-mock-widget:hover) {
     background: rgba(0, 0, 0, 0.6) !important;
-    /* Возвращаем темный фон */
 }
 
 .rgthree-mock-node-header {
     padding: 7px 10px;
-    /* font-weight: bold; */
     font-size: 12px;
     color: #fff;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -138,7 +114,6 @@
     cursor: pointer !important;
 }
 
-/* --- 4. ВИДЖЕТЫ --- */
 .rgthree-mock-node-body {
     padding: 8px;
     display: flex;
@@ -163,12 +138,10 @@
 .rgthree-mock-widget:hover {
     background: rgba(255, 255, 255, 0.15) !important;
     color: #fff !important;
-    /* transform: translateX(3px); */
     transform: scale(1.02);
 
 }
 
-/* ВЫДЕЛЕННЫЙ ВИДЖЕТ (ГОЛУБОЙ) */
 .rgthree-mock-widget.selected {
     background: rgba(0, 120, 212, 0.2) !important;
     color: #fff !important;
@@ -176,7 +149,6 @@
     box-shadow: 0 0 15px rgba(0, 120, 212, 0.4) !important;
 }
 
-/* --- 5. ПРОКСИ-ПАНЕЛЬ (ПРАВАЯ) --- */
 #rgthree-mapping-proxy-panel {
     width: 280px;
     display: none;
@@ -224,7 +196,6 @@
     opacity: 0.8;
 }
 
-/* --- 6. КНОПКИ --- */
 .rgthree-mock-btn-cancel,
 .rgthree-mock-btn-apply {
     width: 100%;
@@ -257,7 +228,6 @@
 
 .rgthree-mock-btn-cancel:hover {
     background: rgba(220, 53, 69, 0.2) !important;
-    /* Легкий красный оттенок при наведении */
     color: #ff4d4d !important;
     border-color: rgba(220, 53, 69, 0.5) !important;
     box-shadow: 0 0 15px rgba(220, 53, 69, 0.2);
@@ -268,25 +238,19 @@
     transform: scale(0.98);
 }
 
-/* Название виджета (ключ) */
 .widget-label {
     color: #aaa;
     margin-right: 4px;
 }
 
-/* Значение: Строка (Зеленый) */
 .widget-value.type-string {
     color: #4ec9b0 !important;
-    /* Приятный мятно-зеленый */
 }
 
-/* Значение: Число (Оранжевый) */
 .widget-value.type-number {
     color: #ce9178 !important;
-    /* Спокойный оранжево-бежевый */
 }
 
-/* Состояние при выделении (чтобы текст оставался читаемым) */
 .rgthree-mock-widget.selected .widget-value {
     color: #fff !important;
 }
@@ -307,5 +271,4 @@
 .flash-apply {
     animation: rgthree-flash-apply 0.4s ease-out;
     border-radius: 4px;
-    /* Чтобы вспышка была аккуратной */
 }

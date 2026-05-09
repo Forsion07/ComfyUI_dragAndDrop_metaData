@@ -1,21 +1,15 @@
 import { app } from "../../scripts/app.js";
 
-// ========== Утилита извлечения workflow/prompt из PNG ==========
 async function extractWorkflowFromDragEvent(e) {
     const files = e.dataTransfer?.files;
     if (!files || !files.length) return { workflow: null, prompt: null };
-
     const file = files[0];
     const buffer = await file.arrayBuffer();
     const view = new DataView(buffer);
-
-    // Проверяем сигнатуру PNG
     if (view.getUint32(0) !== 0x89504E47) {
         console.warn("Not a PNG file");
         return { workflow: null, prompt: null };
     }
-
-    // Функция поиска текстового чанка
     const findChunk = (keyword) => {
         let offset = 8;
         while (offset < view.byteLength) {
@@ -43,27 +37,22 @@ async function extractWorkflowFromDragEvent(e) {
                     }
                 }
             }
-            offset += 12 + length; // длина + type + crc
+            offset += 12 + length;
         }
         return null;
     };
-
     const workflow = findChunk("workflow");
     const prompt = findChunk("prompt");
-
     return { workflow, prompt };
 }
 
-// ========== Проверка, разрешена ли функция (замена CONFIG_SERVICE) ==========
 function isFeatureEnabled() {
-    // По умолчанию включено. Можно добавить настройку через localStorage.
     return localStorage.getItem("dragAndDrop_metaData_enabled") !== "false";
 }
 
 app.registerExtension({
     name: "dragAndDrop_metaData",
     async setup() {
-        // 1. CSS (ваш код без изменений)
         const cssUrl = new URL("./nodeMenu.css", import.meta.url).href;
         if (!document.querySelector(`link[href="${cssUrl}"]`)) {
             const link = document.createElement("link");
@@ -72,64 +61,36 @@ app.registerExtension({
             link.href = cssUrl;
             document.head.appendChild(link);
         }
-
-        // 2. Патчим все существующие ноды и подписываемся на новые
         const patchNode = (node) => {
-            // Работаем только с нодами, у которых есть виджеты
             if (!node.widgets || node.widgets.length === 0) return;
-
-            // Проверяем, не пропатчена ли уже (чтобы не дублировать)
             if (node._dragAndDropPatched) return;
             node._dragAndDropPatched = true;
-
-
-            // Сохраняем оригинальные методы (могут быть из прототипа или собственные)
             const origOnDragOver = node.onDragOver;
             const origOnDragDrop = node.onDragDrop;
-
-            // Переопределяем onDragOver
             node.onDragOver = function (e) {
-                // Сначала даём шанс оригинальному обработчику (например, от других расширений)
                 let handled = origOnDragOver?.apply(this, arguments);
                 if (handled) return true;
-                // Наше условие: разрешаем, если есть виджеты и функция не заблокирована
                 return (!!this.widgets?.length && isFeatureEnabled()) || false;
             };
-
-            // Переопределяем onDragDrop
             node.onDragDrop = async function (e) {
-                // Вызываем оригинальный метод (если есть) и проверяем, обработал ли он событие
                 const alreadyHandled = await origOnDragDrop?.apply(this, arguments);
                 if (alreadyHandled) return alreadyHandled;
-                // Если нет — выполняем нашу логику импорта
                 return importMetaData(this, e);
             };
-
         };
-
-        // Применяем патч ко всем нодам, которые уже есть на сцене (например, после загрузки сохранения)
         if (app.graph && app.graph._nodes) {
             for (const node of app.graph._nodes) {
                 patchNode(node);
             }
         }
-
-        // Подписываемся на добавление новых нод в реальном времени
         const onNodeAdded = (node) => {
-            // Небольшая задержка, чтобы нода точно достроила свои виджеты и внутренние обработчики
             setTimeout(() => patchNode(node), 0);
         };
         app.graph.onNodeAdded = onNodeAdded;
-
-        // Очистка при выгрузке расширения (на всякий случай)
         this._cleanup = () => {
             app.graph.onNodeAdded = null;
         };
     },
-    // beforeRegisterNodeDef не используем, он мешал
-    async beforeRegisterNodeDef() {
-        // оставляем пустым, чтобы не было ошибки, если где-то вызывается
-    }
 });
 
 function toNodeLabel(node) {
@@ -391,8 +352,6 @@ function analyzeWidgets(node, graphCtx) {
         }
 
         if (typeof value === 'string') {
-            const samplers = ['euler', 'euler_ancestral', 'dpmpp_2m', 'ddim', 'lms'];
-            const schedulers = ['normal', 'simple', 'karras', 'exponential', 'sgm_uniform', 'ddim'];
             if (/(euler|dpmpp|ddim_|lms|normal|simple|karras|exponential|sgm_|ddim_)/i.test(value) && !hints.hasPrompt) {
                 hints.hasGenParams = true;
             }
@@ -541,26 +500,18 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         const overlay = document.createElement("div");
         overlay.id = "rgthree-primitive-import-menu";
 
-        // --- ЛОГИКА УМНОЙ ПОЗИЦИИ ---
-        document.body.appendChild(overlay); // Сначала добавляем, чтобы узнать высоту
-
-        const menuWidth = 520; // Соответствует max-width в CSS
+        document.body.appendChild(overlay);
+        const menuWidth = 520;
         const menuHeight = Math.min(window.innerHeight * 0.7, candidates.length * 150);
-
         let left = e.clientX || 8;
-        // В блоке расчета top:
         let top = e.clientY || 8;
-        const offset = 40; // Дополнительный запас в пикселях
-
-        // Если меню не влезает по ширине — сдвигаем влево
+        const offset = 40;
         if (left + menuWidth > window.innerWidth) {
             left = window.innerWidth - menuWidth - 20;
         }
-        // Если не влезает по высоте — сдвигаем вверх
         if (top + menuHeight > window.innerHeight) {
             top = window.innerHeight - menuHeight - offset;
         }
-
         overlay.style.left = `${Math.max(8, left)}px`;
         overlay.style.top = `${Math.max(8, top)}px`;
 
@@ -569,22 +520,18 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         title.style.cursor = "move";
         title.textContent = "::: Select node to import values from";
         overlay.appendChild(title);
-
         let isDragging = false;
         let offsetX, offsetY;
-
         title.onmousedown = (e) => {
             isDragging = true;
             offsetX = e.clientX - overlay.offsetLeft;
             offsetY = e.clientY - overlay.offsetTop;
         };
-
         window.addEventListener("mousemove", (e) => {
             if (!isDragging) return;
             overlay.style.left = `${e.clientX - offsetX}px`;
             overlay.style.top = `${e.clientY - offsetY}px`;
         });
-
         window.addEventListener("mouseup", () => {
             isDragging = false;
             title.style.background = "";
@@ -595,7 +542,6 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             positive: "#386641", negative: "#732c2c", samplerParams: "#907130",
             prompt: "#733e2c", unknown: "#333333"
         };
-
         let selectedValue = null;
         let selectedWidgetEl = null;
         const mapping = {};
@@ -663,7 +609,6 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         btnApplyManual.textContent = "Apply";
         btnApplyManual.onclick = () => closeMenu({ action: "manual", mapping });
         proxyPanel.appendChild(btnApplyManual);
-
         const closeMenu = (selectedResult, evt) => {
             if (evt) {
                 evt.preventDefault();
@@ -687,6 +632,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             const header = document.createElement("div");
             header.className = "rgthree-mock-node-header";
             header.style.backgroundColor = ROLE_COLORS[role] || ROLE_COLORS.unknown;
+
             const label = (typeof toNodeLabel === 'function') ? toNodeLabel(node) : (node.type || 'Node');
             header.textContent = label;
             header.onclick = (e) => closeMenu({ node, action: "direct" }, e);
@@ -699,7 +645,6 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             };
 
             let nodeInPrompt = graphCtx.promptData.get(node.id) ?? [];
-
             const promptInputs = nodeInPrompt?.inputs || {};
             const workflowInputsByName = new Map(node.inputs.map(i => [i.name, i]));
             const widgetInputs = Object.entries(promptInputs).reduce((acc, [name, value]) => {
@@ -718,29 +663,24 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                 }
                 return acc;
             }, []);
+
             for (const input of widgetInputs) {
                 const val = input.value;
                 if (val === undefined || val === null || String(val).trim() === "") continue;
-
                 let widgetName = input.name ?? "Widget";
-
                 const text = String(val).trim();
                 if (text === "" && !Array.isArray(val)) continue;
-
                 const preview = text.length > 100 ? text.slice(0, 100) + "..." : text;
                 const widgetLine = document.createElement("div");
                 widgetLine.className = "rgthree-mock-widget";
-
                 let typeClass = "";
                 if (typeof val === 'number') {
                     typeClass = "type-number";
                 } else if (typeof val === 'string') {
                     typeClass = "type-string";
                 }
-
                 widgetLine.innerHTML = `<span class="widget-label">${widgetName}:</span> <span class="widget-value ${typeClass}"></span>`;
                 widgetLine.querySelector(".widget-value").textContent = preview;
-
                 widgetLine.onclick = (evt) => {
                     evt.stopPropagation();
                     if (targetNode.widgets && targetNode.widgets.length === 1) {
@@ -804,12 +744,10 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
 
         setTimeout(() => {
             const onOutsideClick = (evt) => {
-                // Проверяем, попал ли клик внутрь основного меню или прокси-панели
                 const isInsideMenu = overlay.contains(evt.target);
                 const isInsideProxy = proxyPanel.contains(evt.target);
 
                 if (!isInsideMenu && !isInsideProxy) {
-                    // Если клик вне — убиваем событие и закрываем
                     evt.preventDefault();
                     evt.stopPropagation();
                     evt.stopImmediatePropagation();
@@ -823,11 +761,9 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                 }
             };
 
-            // Слушаем на стадии захвата (true), чтобы быть первыми
             window.addEventListener("pointerdown", onOutsideClick, true);
             window.addEventListener("keydown", onKeydown, true);
 
-            // Чистим слушатели при закрытии
             overlay._cleanup = () => {
                 window.removeEventListener("pointerdown", onOutsideClick, true);
                 window.removeEventListener("keydown", onKeydown, true);
