@@ -105,7 +105,6 @@ app.registerExtension({
                 return importMetaData(this, e);
             };
 
-            console.log(`[dragAndDrop_metaData] Patched node: ${node.type} #${node.id}`);
         };
 
         // Применяем патч ко всем нодам, которые уже есть на сцене (например, после загрузки сохранения)
@@ -445,6 +444,10 @@ function getNodeRole(node, graphCtx, options = {}) {
         allowLinkTracing = true,
         allowNoLinks = false,
     } = options;
+    const hasWidgetsStrings = node.widgets_values?.some(v => /[\w\d]/.test(v));
+    const hasOutLinks = node.outputs.some(o => o.links !== null && o.links.length);
+    if (!allowNoLinks && !hasOutLinks) return { role: "unknown", score: 0 };;
+    if (!allowEmptyWidgets && !hasWidgetsStrings) return { role: "unknown", score: 0 };;
     let score = {
         unknown: 0,
         model: 0,
@@ -458,8 +461,6 @@ function getNodeRole(node, graphCtx, options = {}) {
     const type = node?.type.toLowerCase();
     const title = node?.title?.toLowerCase();
     const widgetValues = analyzeWidgets(node, graphCtx);
-    const hasWidgetsStrings = node.widgets_values?.some(v => /[\w\d]/.test(v));
-    const hasOutLinks = node.outputs.some(o => o.links !== null && o.links.length);
     let downstream = { reachesPositive: false, reachesNegative: false };
     if (allowLinkTracing) { downstream = getDownstreamSignals(node, graphCtx) };
     const nodeHasAnyKeyword = (keywords, ...fields) =>
@@ -471,9 +472,6 @@ function getNodeRole(node, graphCtx, options = {}) {
         [o.name, o.type, o.label].filter(v => typeof v === "string")
     );
     const params = ["seed", "steps", "cfg", "sampler", "scheduler", "noise"];
-
-    if (!allowNoLinks && !hasOutLinks) return "unknown";
-    if (!allowEmptyWidgets && !hasWidgetsStrings) return "unknown";
 
     score.model += widgetValues.hasModel ? 1 : -1;
     if (downstream.reachesModel) score.model += 1;
@@ -498,7 +496,7 @@ function getNodeRole(node, graphCtx, options = {}) {
     if (downstream.reachesSampler) score.samplerParams += 1;
     score.samplerParams += nodeHasAnyKeyword(params, title, type) ? 1 : -1;
 
-    score.latent += widgetValues.hasDimensions ? 1 : -1;
+    score.latent += widgetValues.hasDimensions ? 1 : -2;
     if (downstream.reachesLatent) score.latent += 1;
     score.latent += nodeHasAnyKeyword(["latent"], title, type, ...outStrings) ? 1 : -1;
 
