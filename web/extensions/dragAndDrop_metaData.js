@@ -61,7 +61,8 @@ app.registerExtension({
             link.href = cssUrl;
             document.head.appendChild(link);
         }
-        const patchNode = (node) => {
+        const patchNode = (node, graph = null) => {
+            const currentGraph = graph || app.graph;
             if (!node.widgets || node.widgets.length === 0) return;
             if (node._dragAndDropPatched) return;
             node._dragAndDropPatched = true;
@@ -77,14 +78,25 @@ app.registerExtension({
                 if (alreadyHandled) return alreadyHandled;
                 return importMetaData(this, e);
             };
+            if (node.subgraph && node.subgraph._nodes) {
+                for (const innerNode of node.subgraph._nodes) {
+                    patchNode(innerNode, node.subgraph);
+                }
+                const origSubgraphOnNodeAdded = node.subgraph.onNodeAdded;
+                node.subgraph.onNodeAdded = function (innerNode) {
+                    origSubgraphOnNodeAdded?.call(this, innerNode);
+                    patchNode(innerNode, node.subgraph);
+                };
+            }
+            console.log(`[dragAndDrop_metaData] Patched node: ${node.type} #${node.id}${graph ? ' (subgraph)' : ''}`);
         };
         if (app.graph && app.graph._nodes) {
             for (const node of app.graph._nodes) {
-                patchNode(node);
+                patchNode(node, app.graph);
             }
         }
         const onNodeAdded = (node) => {
-            setTimeout(() => patchNode(node), 0);
+            setTimeout(() => patchNode(node, app.graph), 0);
         };
         app.graph.onNodeAdded = onNodeAdded;
         this._cleanup = () => {
@@ -306,6 +318,7 @@ function asumePrompt(widgetValue) {
     if (text.includes('easynegative') || text.includes('badhand')) negScore += 3;
     if (/embedding:.*(neg|bad).*/.test(text)) negScore += 2;
     if (text.includes('{') && text.includes('}')) baseScore -= 5;
+    if (/\.(png|jpg|webp)/.test(text)) baseScore -= 5;
     if (/^[a-zA-Z0-9_/\\]+\.(safetensors|ckpt|pt|pth|bin)$/i.test(text)) baseScore -= 5;
 
     return {
@@ -432,7 +445,7 @@ function getNodeRole(node, graphCtx, options = {}) {
     );
     const params = ["seed", "steps", "cfg", "sampler", "scheduler", "noise"];
 
-    score.model += widgetValues.hasModel ? 1 : -1;
+    score.model += widgetValues.hasModel ? 3 : -1;
     if (downstream.reachesModel) score.model += 1;
     score.model += nodeHasAnyKeyword(["checkpoint", "ckpt", "model"], title, type, ...outStrings) ? 1 : -1;
 
