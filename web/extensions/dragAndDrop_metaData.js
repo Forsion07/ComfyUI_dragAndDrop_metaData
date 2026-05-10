@@ -61,13 +61,14 @@ app.registerExtension({
             link.href = cssUrl;
             document.head.appendChild(link);
         }
-        const patchNode = (node, graph = null) => {
-            const currentGraph = graph || app.graph;
-            if (!node.widgets || node.widgets.length === 0) return;
-            if (node._dragAndDropPatched) return;
-            node._dragAndDropPatched = true;
-            const origOnDragOver = node.onDragOver;
+        const patched = new WeakSet();
+        function patchIfSubgraph(node) {
+            if (!node || patched.has(node)) return;
+            if (!node.widgets || !node.widgets.length) return;
+            if (!node.isVirtualNode && !/^[0-9a-f-]{36}$/.test(node.type) && !node.type.includes("rgthree")) return;
+            patched.add(node);
             const origOnDragDrop = node.onDragDrop;
+            const origOnDragOver = node.onDragOver;
             node.onDragOver = function (e) {
                 let handled = origOnDragOver?.apply(this, arguments);
                 if (handled) return true;
@@ -78,29 +79,35 @@ app.registerExtension({
                 if (alreadyHandled) return alreadyHandled;
                 return importMetaData(this, e);
             };
-            if (node.subgraph && node.subgraph._nodes) {
-                for (const innerNode of node.subgraph._nodes) {
-                    patchNode(innerNode, node.subgraph);
-                }
-                const origSubgraphOnNodeAdded = node.subgraph.onNodeAdded;
-                node.subgraph.onNodeAdded = function (innerNode) {
-                    origSubgraphOnNodeAdded?.call(this, innerNode);
-                    patchNode(innerNode, node.subgraph);
-                };
-            }
-            console.log(`[dragAndDrop_metaData] Patched node: ${node.type} #${node.id}${graph ? ' (subgraph)' : ''}`);
-        };
-        if (app.graph && app.graph._nodes) {
+        }
+        if (app.graph?._nodes) {
             for (const node of app.graph._nodes) {
-                patchNode(node, app.graph);
+                patchIfSubgraph(node);
             }
         }
-        const onNodeAdded = (node) => {
-            setTimeout(() => patchNode(node, app.graph), 0);
+        const origOnNodeAdded = app.graph.onNodeAdded;
+        app.graph.onNodeAdded = function (node) {
+            origOnNodeAdded?.apply(this, arguments);
+            patchIfSubgraph(node);
         };
-        app.graph.onNodeAdded = onNodeAdded;
-        this._cleanup = () => {
-            app.graph.onNodeAdded = null;
+    },
+    async beforeRegisterNodeDef(nodeType) {
+        const origOnDragDrop = nodeType.prototype.onDragDrop;
+        const origOnDragOver = nodeType.prototype.onDragOver;
+        nodeType.prototype.onDragOver = function (e) {
+            const handled =
+                origOnDragOver?.apply(this, arguments);
+            if (handled != null) {
+                return handled;
+            }
+            return isFeatureEnabled();
+        };
+        nodeType.prototype.onDragDrop = async function (e) {
+            const handled =
+                await origOnDragDrop?.apply(this, arguments);
+            const mine =
+                await importMetaData(this, e);
+            return handled || mine;
         };
     },
 });
