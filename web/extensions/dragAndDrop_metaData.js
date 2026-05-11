@@ -52,45 +52,6 @@ function isFeatureEnabled() {
 
 app.registerExtension({
     name: "dragAndDrop_metaData",
-    async setup() {
-        const cssUrl = new URL("./nodeMenu.css", import.meta.url).href;
-        if (!document.querySelector(`link[href="${cssUrl}"]`)) {
-            const link = document.createElement("link");
-            link.rel = "stylesheet";
-            link.type = "text/css";
-            link.href = cssUrl;
-            document.head.appendChild(link);
-        }
-        const patched = new WeakSet();
-        function patchIfSubgraph(node) {
-            if (!node || patched.has(node)) return;
-            if (!node.widgets || !node.widgets.length) return;
-            if (!node.isVirtualNode && !/^[0-9a-f-]{36}$/.test(node.type) && !node.type.includes("rgthree")) return;
-            patched.add(node);
-            const origOnDragDrop = node.onDragDrop;
-            const origOnDragOver = node.onDragOver;
-            node.onDragOver = function (e) {
-                let handled = origOnDragOver?.apply(this, arguments);
-                if (handled) return true;
-                return (!!this.widgets?.length && isFeatureEnabled()) || false;
-            };
-            node.onDragDrop = async function (e) {
-                const alreadyHandled = await origOnDragDrop?.apply(this, arguments);
-                if (alreadyHandled) return alreadyHandled;
-                return importMetaData(this, e);
-            };
-        }
-        if (app.graph?._nodes) {
-            for (const node of app.graph._nodes) {
-                patchIfSubgraph(node);
-            }
-        }
-        const origOnNodeAdded = app.graph.onNodeAdded;
-        app.graph.onNodeAdded = function (node) {
-            origOnNodeAdded?.apply(this, arguments);
-            patchIfSubgraph(node);
-        };
-    },
     async beforeRegisterNodeDef(nodeType) {
         const origOnDragDrop = nodeType.prototype.onDragDrop;
         const origOnDragOver = nodeType.prototype.onDragOver;
@@ -109,6 +70,55 @@ app.registerExtension({
                 await importMetaData(this, e);
             return handled || mine;
         };
+    },
+    async setup() {
+        const cssUrl = new URL("./nodeMenu.css", import.meta.url).href;
+        if (!document.querySelector(`link[href="${cssUrl}"]`)) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.type = "text/css";
+            link.href = cssUrl;
+            document.head.appendChild(link);
+        }
+        const findUpstreamProto = (obj) => {
+            if (!obj) return null;
+            if (obj.constructor?.name === "RgthreeBaseNode") {
+                return obj;
+            }
+            return findUpstreamProto(
+                Object.getPrototypeOf(obj)
+            );
+        };
+        const patchProto = (proto) => {
+            if (!proto) return;
+            const origDrop = proto.onDragDrop;
+            const origOver = proto.onDragOver;
+            proto.onDragOver = function (e) {
+                const handled = origOver?.apply(this, arguments);
+                if (handled === true) {
+                    return true;
+                }
+                return isFeatureEnabled();
+            };
+            proto.onDragDrop = async function (e) {
+                const handled = await origDrop?.apply(this, arguments);
+                if (handled === true) {
+                    return true;
+                }
+                return importMetaData(this, e);
+            };
+        }
+        // rgthree patch //
+        const rgthreeType = LiteGraph.registered_node_types["Seed (rgthree)"];
+        if (rgthreeType) patchProto(findUpstreamProto(rgthreeType.prototype));
+        // subgraph patch //
+        const intervall = setInterval(() => {
+            const subgraph = app.graph._nodes.find(n => n.subgraph);
+            if (!subgraph) return;
+            clearInterval(intervall);
+            const subgraphProto = Object.getPrototypeOf(Object.getPrototypeOf(subgraph));
+            subgraphProto ? patchProto(subgraphProto) : null;
+        }, 500);
     },
 });
 
