@@ -52,6 +52,7 @@ function isFeatureEnabled() {
 
 app.registerExtension({
     name: "dragAndDrop_metaData",
+    // onDrag patch //
     async beforeRegisterNodeDef(nodeType) {
         const origOnDragDrop = nodeType.prototype.onDragDrop;
         const origOnDragOver = nodeType.prototype.onDragOver;
@@ -72,6 +73,7 @@ app.registerExtension({
         };
     },
     async setup() {
+        // CSS //
         const cssUrl = new URL("./nodeMenu.css", import.meta.url).href;
         if (!document.querySelector(`link[href="${cssUrl}"]`)) {
             const link = document.createElement("link");
@@ -80,6 +82,163 @@ app.registerExtension({
             link.href = cssUrl;
             document.head.appendChild(link);
         }
+        // settings //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.General.Accuracy",
+            name: "🎯 Accuracy",
+            defaultValue: 0,
+            type: "slider",
+            attrs: { min: 0, max: 5, step: 1 },
+            tooltip: "Filters out roles with a score lower than given number"
+        });
+        // Model //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.1-Model.WidgetHints",
+            name: "Widget Hints",
+            defaultValue: 2,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.1-Model.DownstreamHints",
+            name: "Downstream Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.1-Model.NodeHints",
+            name: "Node Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        // Lora //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.2-Lora.WidgetHints",
+            name: "Widget Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.2-Lora.DownstreamHints",
+            name: "Downstream Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.2-Lora.NodeHints",
+            name: "Node Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        // Prompt //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.3-Prompt.WidgetHints",
+            name: "Widget Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.3-Prompt.NodeHints",
+            name: "Node Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        // Positive //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.4-Positive.WidgetHints",
+            name: "Widget Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.4-Positive.DownstreamHints",
+            name: "Downstream Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.4-Positive.NodeHints",
+            name: "Node Hints",
+            defaultValue: 3,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        // Negative //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.5-Negative.WidgetHints",
+            name: "Widget Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.5-Negative.DownstreamHints",
+            name: "Downstream Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.5-Negative.NodeHints",
+            name: "Node Hints",
+            defaultValue: 3,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        // SamplerParams //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.6-SamplerParams.WidgetHints",
+            name: "Widget Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.6-SamplerParams.DownstreamHints",
+            name: "Downstream Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.6-SamplerParams.NodeHints",
+            name: "Node Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        // Latent //
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.7-Latent.WidgetHints",
+            name: "Widget Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.7-Latent.DownstreamHints",
+            name: "Downstream Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.7-Latent.NodeHints",
+            name: "Node Hints",
+            defaultValue: 1,
+            type: "slider",
+            attrs: { min: 1, max: 5, step: 1 },
+        });
+        // patch helpers //
         const findUpstreamProto = (obj) => {
             if (!obj) return null;
             if (obj.constructor?.name === "RgthreeBaseNode") {
@@ -447,6 +606,28 @@ function getNodeRole(node, graphCtx, options = {}) {
         samplerParams: 0,
         latent: 0,
     }
+    let scoreModifier = {
+        modelWidgetsHints: app.ui.settings.getSettingValue("DnDMetadata.1-Model.WidgetHints"),
+        modelDownstreamHints: app.ui.settings.getSettingValue("DnDMetadata.1-Model.DownstreamHints"),
+        modelNodeHints: app.ui.settings.getSettingValue("DnDMetadata.1-Model.NodeHints"),
+        loraWidgetsHints: app.ui.settings.getSettingValue("DnDMetadata.2-Lora.WidgetHints"),
+        loraDownstreamHints: app.ui.settings.getSettingValue("DnDMetadata.2-Lora.DownstreamHints"),
+        loraNodeHints: app.ui.settings.getSettingValue("DnDMetadata.2-Lora.NodeHints"),
+        promptWidgetsHints: app.ui.settings.getSettingValue("DnDMetadata.3-Prompt.WidgetHints"),
+        promptNodeHints: app.ui.settings.getSettingValue("DnDMetadata.3-Prompt.NodeHints"),
+        positiveWidgetsHints: app.ui.settings.getSettingValue("DnDMetadata.4-Positive.WidgetHints"),
+        positiveDownstreamHints: app.ui.settings.getSettingValue("DnDMetadata.4-Positive.DownstreamHints"),
+        positiveNodeHints: app.ui.settings.getSettingValue("DnDMetadata.4-Positive.NodeHints"),
+        negativeWidgetsHints: app.ui.settings.getSettingValue("DnDMetadata.5-Negative.WidgetHints"),
+        negativeDownstreamHints: app.ui.settings.getSettingValue("DnDMetadata.5-Negative.DownstreamHints"),
+        negativeNodeHints: app.ui.settings.getSettingValue("DnDMetadata.5-Negative.NodeHints"),
+        samplerParamsWidgetsHints: app.ui.settings.getSettingValue("DnDMetadata.6-SamplerParams.WidgetHints"),
+        samplerParamsDownstreamHints: app.ui.settings.getSettingValue("DnDMetadata.6-SamplerParams.DownstreamHints"),
+        samplerParamsNodeHints: app.ui.settings.getSettingValue("DnDMetadata.6-SamplerParams.NodeHints"),
+        latentWidgetsHints: app.ui.settings.getSettingValue("DnDMetadata.7-Latent.WidgetHints"),
+        latentDownstreamHints: app.ui.settings.getSettingValue("DnDMetadata.7-Latent.DownstreamHints"),
+        latentNodeHints: app.ui.settings.getSettingValue("DnDMetadata.7-Latent.NodeHints"),
+    };
     const type = node?.type.toLowerCase();
     const title = node?.title?.toLowerCase();
     const widgetValues = analyzeWidgets(node, graphCtx);
@@ -462,32 +643,32 @@ function getNodeRole(node, graphCtx, options = {}) {
     );
     const params = ["seed", "steps", "cfg", "sampler", "scheduler", "noise"];
 
-    score.model += widgetValues.hasModel ? 3 : -1;
-    if (downstream.reachesModel) score.model += 1;
-    score.model += nodeHasAnyKeyword(["checkpoint", "ckpt", "model"], title, type, ...outStrings) ? 1 : -1;
+    score.model += widgetValues.hasModel ? 1 * scoreModifier.modelWidgetsHints : -1;
+    if (downstream.reachesModel) score.model += 1 * scoreModifier.modelDownstreamHints;
+    score.model += nodeHasAnyKeyword(["checkpoint", "ckpt", "model"], title, type, ...outStrings) ? 1 * scoreModifier.modelNodeHints : -1;
 
-    if (widgetValues.hasLora) score.lora += 1;
-    if (downstream.reachesModel) score.lora += 1;
-    score.lora += nodeHasAnyKeyword(["lora"], title, type, ...outStrings) ? 1 : -1;
+    if (widgetValues.hasLora) score.lora += 1 * scoreModifier.loraWidgetsHints;
+    if (downstream.reachesModel) score.lora += 1 * scoreModifier.loraDownstreamHints;
+    score.lora += nodeHasAnyKeyword(["lora"], title, type, ...outStrings) ? 1 * scoreModifier.loraNodeHints : -1;
 
-    if (widgetValues.hasPositive) { score.positive += 1, score.prompt -= 1 } else score.positive -= 1;
-    if (downstream.reachesPositive) score.positive += 1;
-    if (nodeHasAnyKeyword(["positive"], title, type)) score.positive += 3;
+    if (widgetValues.hasPositive) { score.positive += 1 * scoreModifier.positiveWidgetsHints, score.prompt -= 1 } else score.positive -= 1;
+    if (downstream.reachesPositive) score.positive += 1 * scoreModifier.positiveDownstreamHints;
+    if (nodeHasAnyKeyword(["positive"], title, type)) score.positive += 1 * scoreModifier.positiveNodeHints;
 
-    if (widgetValues.hasNegative) { score.negative += 1, score.prompt -= 1 } else score.negative -= 1;
-    if (downstream.reachesNegative) score.negative += 1;
-    if (nodeHasAnyKeyword(["negative"], title, type)) score.negative += 3;
+    if (widgetValues.hasNegative) { score.negative += 1 * scoreModifier.negativeWidgetsHints, score.prompt -= 1 } else score.negative -= 1;
+    if (downstream.reachesNegative) score.negative += 1 * scoreModifier.negativeDownstreamHints;
+    if (nodeHasAnyKeyword(["negative"], title, type)) score.negative += 1 * scoreModifier.negativeNodeHints;
 
-    if (widgetValues.hasPrompt && !widgetValues.hasPositive && !widgetValues.hasNegative) score.prompt += 1;
-    if (nodeHasAnyKeyword(["string", "conditioning", "prompt"], title, type)) score.prompt += 1;
+    if (widgetValues.hasPrompt && !widgetValues.hasPositive && !widgetValues.hasNegative) score.prompt += 1 * scoreModifier.promptWidgetsHints;
+    if (nodeHasAnyKeyword(["string", "conditioning", "prompt"], title, type)) score.prompt += 1 * scoreModifier.promptNodeHints;
 
-    if (widgetValues.hasGenParams) score.samplerParams += 1;
-    if (downstream.reachesSampler) score.samplerParams += 1;
-    score.samplerParams += nodeHasAnyKeyword(params, title, type) ? 1 : -1;
+    if (widgetValues.hasGenParams) score.samplerParams += 1 * scoreModifier.samplerParamsWidgetsHints;
+    if (downstream.reachesSampler) score.samplerParams += 1 * scoreModifier.samplerParamsDownstreamHints;
+    score.samplerParams += nodeHasAnyKeyword(params, title, type) ? 1 * scoreModifier.samplerParamsNodeHints : -1;
 
-    score.latent += widgetValues.hasDimensions ? 1 : -2;
-    if (downstream.reachesLatent) score.latent += 1;
-    score.latent += nodeHasAnyKeyword(["latent"], title, type, ...outStrings) ? 1 : -1;
+    score.latent += widgetValues.hasDimensions ? 1 * scoreModifier.latentWidgetsHints : -2;
+    if (downstream.reachesLatent) score.latent += 1 * scoreModifier.latentDownstreamHints;
+    score.latent += nodeHasAnyKeyword(["latent"], title, type, ...outStrings) ? 1 * scoreModifier.latentNodeHints : -1;
 
     const result = Object.entries(score).reduce(
         (max, curr) =>
@@ -501,18 +682,19 @@ function getRoleMatches(targetNode, graphCtx) {
         allowLinkTracing: false,
         allowNoLinks: true
     };
+    const accuracy = app.ui.settings.getSettingValue("DnDMetadata.settings.accuracy");
     const targetRole = getNodeRole(targetNode, graphCtx, options).role;
     if (!targetRole || targetRole === "unknown") {
         return [];
     }
     const candidateNodes = (graphCtx.allActiveNodes || []).filter(candidate => {
-        const candidateRole = getNodeRole(candidate, graphCtx).role;
-        if (candidateRole === targetRole) {
+        const candidateRole = getNodeRole(candidate, graphCtx);
+        if (candidateRole.role === targetRole && candidateRole.score >= accuracy) {
             return true;
         }
         if (
             targetRole === "prompt" &&
-            (candidateRole === "positive" || candidateRole === "negative")
+            (candidateRole.role === "positive" || candidateRole.role === "negative")
         ) {
             return true;
         }
@@ -664,7 +846,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             header.style.backgroundColor = ROLE_COLORS[role] || ROLE_COLORS.unknown;
 
             const label = (typeof toNodeLabel === 'function') ? toNodeLabel(node) : (node.type || 'Node');
-            header.textContent = label;
+            header.textContent = `${label}-score[${score}]`;
             header.onclick = (e) => closeMenu({ node, action: "direct" }, e);
             container.appendChild(header);
 
