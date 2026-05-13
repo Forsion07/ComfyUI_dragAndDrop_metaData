@@ -605,7 +605,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         (targetNode.widgets || []).forEach((w, idx) => {
             const slot = document.createElement("div");
             slot.className = "rgthree-proxy-slot";
-            slot.innerHTML = `<span class="slot-name">${w.name || `Widget ${idx}`}</span> <span class="slot-value"></span>`;
+            slot.innerHTML = `<span class="slot-name">${w.label || w.name || `Widget ${idx}`}</span> <span class="slot-value"></span>`;
             const valueSpan = slot.querySelector(".slot-value");
             proxySlotsElements[idx] = { slot, valueSpan };
             slot.onclick = () => {
@@ -679,25 +679,27 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             const workflowInputsByName = new Map(node.inputs.map(i => [i.name, i]));
             const widgetInputs = Object.entries(promptInputs).reduce((acc, [name, value]) => {
                 const wfInput = workflowInputsByName.get(name);
+                const label = wfInput?.label ?? "";
                 if (!Array.isArray(value) && typeof value !== "object") {
                     acc.push({
+                        label,
                         name,
                         value
                     });
                 }
                 else if (wfInput?.widget) {
                     acc.push({
+                        label,
                         name,
                         value: findWidgetValue(value, graphCtx),
                     });
                 }
                 return acc;
             }, []);
-
             for (const input of widgetInputs) {
                 const val = input.value;
                 if (val === undefined || val === null || String(val).trim() === "") continue;
-                let widgetName = input.name ?? "Widget";
+                const widgetName = input.label || input.name || "Widget";
                 const text = String(val).trim();
                 if (text === "" && !Array.isArray(val)) continue;
                 const preview = text.length > 100 ? text.slice(0, 100) + "..." : text;
@@ -717,7 +719,9 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                         closeMenu({ action: "manual", mapping: { 0: val } }, evt);
                         return;
                     }
-                    const matchIdx = (targetNode.widgets || []).findIndex(w => w.name === widgetName);
+                    const matchIdx = (targetNode.widgets || []).findIndex(
+                        (w, idx) => w.label === widgetName && !Object.hasOwn(mapping, idx)
+                    );
                     if (matchIdx !== -1) {
                         mapping[matchIdx] = val;
                         const pSlot = proxySlotsElements[matchIdx];
