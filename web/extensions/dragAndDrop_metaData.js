@@ -83,160 +83,258 @@ app.registerExtension({
             document.head.appendChild(link);
         }
         // settings //
+        const SETTINGS = [
+            {
+                id: "DnDMetadata.General.Accuracy",
+                name: "🎯 Accuracy",
+                defaultValue: 0,
+                type: "slider",
+                attrs: { min: 0, max: 5, step: 1 },
+                tooltip: "Filters out roles with a score lower than given number"
+            },
+            // Model //
+            {
+                id: "DnDMetadata.1-Model.WidgetHints",
+                name: "Widget Hints",
+                defaultValue: 2,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.1-Model.DownstreamHints",
+                name: "Downstream Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.1-Model.NodeHints",
+                name: "Node Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            // Lora //
+            {
+                id: "DnDMetadata.2-Lora.WidgetHints",
+                name: "Widget Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.2-Lora.DownstreamHints",
+                name: "Downstream Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.2-Lora.NodeHints",
+                name: "Node Hints",
+                defaultValue: 2,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            // Prompt //
+            {
+                id: "DnDMetadata.3-Prompt.WidgetHints",
+                name: "Widget Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.3-Prompt.NodeHints",
+                name: "Node Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            // Positive //
+            {
+                id: "DnDMetadata.4-Positive.WidgetHints",
+                name: "Widget Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.4-Positive.DownstreamHints",
+                name: "Downstream Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.4-Positive.NodeHints",
+                name: "Node Hints",
+                defaultValue: 3,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            // Negative //
+            {
+                id: "DnDMetadata.5-Negative.WidgetHints",
+                name: "Widget Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.5-Negative.DownstreamHints",
+                name: "Downstream Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.5-Negative.NodeHints",
+                name: "Node Hints",
+                defaultValue: 3,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            // SamplerParams //
+            {
+                id: "DnDMetadata.6-SamplerParams.WidgetHints",
+                name: "Widget Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.6-SamplerParams.DownstreamHints",
+                name: "Downstream Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.6-SamplerParams.NodeHints",
+                name: "Node Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            // Latent //
+            {
+                id: "DnDMetadata.7-Latent.WidgetHints",
+                name: "Widget Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.7-Latent.DownstreamHints",
+                name: "Downstream Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+            {
+                id: "DnDMetadata.7-Latent.NodeHints",
+                name: "Node Hints",
+                defaultValue: 1,
+                type: "slider",
+                attrs: { min: 1, max: 5, step: 1 },
+            },
+        ];
         app.ui.settings.addSetting({
-            id: "DnDMetadata.General.Accuracy",
-            name: "🎯 Accuracy",
-            defaultValue: 0,
-            type: "slider",
-            attrs: { min: 0, max: 5, step: 1 },
-            tooltip: "Filters out roles with a score lower than given number"
+            id: "DnDMetadata.ResetButton",
+            name: "Reset All Settings",
+            type: "text",
         });
-        // Model //
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.1-Model.WidgetHints",
-            name: "Widget Hints",
-            defaultValue: 2,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
+        SETTINGS.forEach(setting => {
+            app.ui.settings.addSetting(setting);
         });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.1-Model.DownstreamHints",
-            name: "Downstream Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
+        function injectResetButton() {
+            const row = document.querySelector(
+                '[data-setting-id="DnDMetadata.ResetButton"]'
+            );
+            if (!row || row.dataset.injected) {
+                return;
+            }
+            row.dataset.injected = "true";
+            const inputContainer = row.querySelector(".form-input");
+            if (!inputContainer) {
+                return;
+            }
+            inputContainer.innerHTML = "";
+            const button = document.createElement("button");
+            button.textContent = "Reset Settings";
+            button.style.padding = "6px 12px";
+            button.style.cursor = "pointer";
+            button.style.borderRadius = "8px";
+            button.style.border = "none";
+            button.style.background = "#3b82f6";
+            button.style.color = "white";
+            button.style.fontWeight = "600";
+            button.style.transition = "all 0.15s ease";
+            button.onmouseenter = () => {
+                button.style.filter = "brightness(1.1)";
+            };
+            button.onmouseleave = () => {
+                button.style.filter = "brightness(1)";
+            };
+            button.onclick = async () => {
+                for (const setting of SETTINGS) {
+                    await app.ui.settings.setSettingValue(
+                        setting.id,
+                        setting.defaultValue
+                    );
+                }
+            };
+            inputContainer.appendChild(button);
+        };
+        function injectIndividualResetButtons() {
+            for (const setting of SETTINGS) {
+                const row = document.querySelector(
+                    `[data-setting-id="${setting.id}"]`
+                );
+                if (!row || row.dataset.resetInjected) {
+                    continue;
+                }
+                row.dataset.resetInjected = "true";
+                const inputContainer = row.querySelector(".form-input");
+                if (!inputContainer) {
+                    continue;
+                }
+                const resetBtn = document.createElement("button");
+                resetBtn.innerHTML = "↺";
+                resetBtn.title = "Reset to default";
+                resetBtn.style.marginLeft = "8px";
+                resetBtn.style.width = "22px";
+                resetBtn.style.height = "22px";
+                resetBtn.style.borderRadius = "999px";
+                resetBtn.style.border = "none";
+                resetBtn.style.cursor = "pointer";
+                resetBtn.style.fontSize = "12px";
+                resetBtn.style.flexShrink = "0";
+                resetBtn.style.transition = "all 0.15s ease";
+                resetBtn.onclick = async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await app.ui.settings.setSettingValue(
+                        setting.id,
+                        setting.defaultValue
+                    );
+
+                };
+                inputContainer.appendChild(resetBtn);
+            }
+        };
+        const observer = new MutationObserver(() => {
+
+            injectResetButton();
+
+            injectIndividualResetButtons();
+
         });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.1-Model.NodeHints",
-            name: "Node Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        // Lora //
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.2-Lora.WidgetHints",
-            name: "Widget Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.2-Lora.DownstreamHints",
-            name: "Downstream Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.2-Lora.NodeHints",
-            name: "Node Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        // Prompt //
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.3-Prompt.WidgetHints",
-            name: "Widget Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.3-Prompt.NodeHints",
-            name: "Node Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        // Positive //
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.4-Positive.WidgetHints",
-            name: "Widget Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.4-Positive.DownstreamHints",
-            name: "Downstream Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.4-Positive.NodeHints",
-            name: "Node Hints",
-            defaultValue: 3,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        // Negative //
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.5-Negative.WidgetHints",
-            name: "Widget Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.5-Negative.DownstreamHints",
-            name: "Downstream Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.5-Negative.NodeHints",
-            name: "Node Hints",
-            defaultValue: 3,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        // SamplerParams //
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.6-SamplerParams.WidgetHints",
-            name: "Widget Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.6-SamplerParams.DownstreamHints",
-            name: "Downstream Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.6-SamplerParams.NodeHints",
-            name: "Node Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        // Latent //
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.7-Latent.WidgetHints",
-            name: "Widget Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.7-Latent.DownstreamHints",
-            name: "Downstream Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.7-Latent.NodeHints",
-            name: "Node Hints",
-            defaultValue: 1,
-            type: "slider",
-            attrs: { min: 1, max: 5, step: 1 },
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
         });
         // patch helpers //
         const findUpstreamProto = (obj) => {
@@ -682,7 +780,7 @@ function getRoleMatches(targetNode, graphCtx) {
         allowLinkTracing: false,
         allowNoLinks: true
     };
-    const accuracy = app.ui.settings.getSettingValue("DnDMetadata.settings.accuracy");
+    const accuracy = app.ui.settings.getSettingValue("DnDMetadata.General.Accuracy");
     const targetRole = getNodeRole(targetNode, graphCtx, options).role;
     if (!targetRole || targetRole === "unknown") {
         return [];
