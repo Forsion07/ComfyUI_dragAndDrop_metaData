@@ -1,10 +1,7 @@
 import { app } from "../../scripts/app.js";
+//import { pickBestMediaPathWidget } from "../../comfyui-majoor/web/js/features/dnd/targets/node.js";
 
-async function extractWorkflowFromDragEvent(e) {
-    const files = e.dataTransfer?.files;
-    if (!files || !files.length) return { workflow: null, prompt: null };
-    const file = files[0];
-    const buffer = await file.arrayBuffer();
+function extractMetaDataFromBuffer(buffer) {
     const view = new DataView(buffer);
     if (view.getUint32(0) !== 0x89504E47) {
         console.warn("Not a PNG file");
@@ -41,9 +38,11 @@ async function extractWorkflowFromDragEvent(e) {
         }
         return null;
     };
-    const workflow = findChunk("workflow");
-    const prompt = findChunk("prompt");
-    return { workflow, prompt };
+
+    return {
+        workflow: findChunk("workflow"),
+        prompt: findChunk("prompt")
+    };
 }
 
 function isFeatureEnabled() {
@@ -57,21 +56,26 @@ app.registerExtension({
         const origOnDragDrop = nodeType.prototype.onDragDrop;
         const origOnDragOver = nodeType.prototype.onDragOver;
         nodeType.prototype.onDragOver = function (e) {
-            const handled =
-                origOnDragOver?.apply(this, arguments);
+            const handled = origOnDragOver?.apply(this, arguments);
             if (handled != null) {
                 return handled;
             }
             return isFeatureEnabled();
         };
         nodeType.prototype.onDragDrop = async function (e) {
-            const handled =
-                await origOnDragDrop?.apply(this, arguments);
-            const mine =
-                await importMetaData(this, e);
-            return handled || mine;
+            const handled = await origOnDragDrop?.apply(this, arguments);
+            const files = e.dataTransfer?.files;
+            if (!files?.length) return handled;
+            const buffer = await files[0].arrayBuffer();
+            const { workflow, prompt } = extractMetaDataFromBuffer(buffer);
+            if (workflow) {
+                const mine = await importMetaData(this, workflow, prompt, e);
+                return handled || mine;
+            }
+            return handled;
         };
     },
+
     async setup() {
         // CSS //
         const cssUrl = new URL("./nodeMenu.css", import.meta.url).href;
@@ -319,19 +323,15 @@ app.registerExtension({
                         setting.id,
                         setting.defaultValue
                     );
-
                 };
                 inputContainer.appendChild(resetBtn);
             }
         };
         const observer = new MutationObserver(() => {
-
             injectResetButton();
-
             injectIndividualResetButtons();
 
         });
-
         observer.observe(document.body, {
             childList: true,
             subtree: true,
@@ -362,9 +362,16 @@ app.registerExtension({
                 if (handled === true) {
                     return true;
                 }
-                return importMetaData(this, e);
+                const files = e.dataTransfer?.files;
+                if (!files?.length) return handled;
+                const buffer = await files[0].arrayBuffer();
+                const { workflow, prompt } = extractMetaDataFromBuffer(buffer);
+                if (workflow) {
+                    return importMetaData(this, workflow, prompt, e);
+                }
+                return false;
             };
-        }
+        };
         // rgthree patch //
         const rgthreeType = LiteGraph.registered_node_types["Seed (rgthree)"];
         if (rgthreeType) patchProto(findUpstreamProto(rgthreeType.prototype));
@@ -376,6 +383,70 @@ app.registerExtension({
             const subgraphProto = Object.getPrototypeOf(Object.getPrototypeOf(subgraph));
             subgraphProto ? patchProto(subgraphProto) : null;
         }, 500);
+        // Majoor-Assets-Manager patch //
+        const DND_MIME = "application/x-mjr-asset";
+        let justAppliedMetadata = false;
+        function getNodeUnderClientXY(app, event) {
+            const canvasEl = document.querySelector('canvas');
+            if (!app?.canvas || !canvasEl) return null;
+            const rect = canvasEl.getBoundingClientRect();
+            const scale = app.canvas.ds?.scale ?? 1;
+            const offset = app.canvas.ds?.offset ?? [0, 0];
+            const x = (event.clientX - rect.left) / scale - offset[0];
+            const y = (event.clientY - rect.top) / scale - offset[1];
+            return app.canvas.graph.getNodeOnPos(x, y);
+        }
+
+        async function fetchWorkflowAndPrompt(payload) {
+            const viewUrl = `/api/view?filename=${encodeURIComponent(payload.filename)}&type=${encodeURIComponent(payload.type)}&subfolder=${encodeURIComponent(payload.subfolder || "")}`;
+            const response = await fetch(viewUrl);
+            if (!response.ok) return null;
+            const buffer = await response.arrayBuffer();
+            return extractMetaDataFromBuffer(buffer);
+        }
+
+        const onGlobalDrop = async (event) => {
+            if (!isFeatureEnabled()) return;
+            if (!event.dataTransfer?.types.includes(DND_MIME)) return;
+            justAppliedMetadata = true;
+            let payload;
+            try {
+                const raw = event.dataTransfer.getData(DND_MIME);
+                if (!raw) return;
+                payload = JSON.parse(raw);
+            } catch { return; }
+            if (!payload?.filename) return;
+            const node = getNodeUnderClientXY(app, event);
+            if (!node) return;
+            const droppedExt = String(payload.filename).split(".").pop() || "";
+            let canAcceptFile = false;
+            try {
+                canAcceptFile = !!pickBestMediaPathWidget(node, payload, droppedExt);
+            } catch (e) {
+                const defaultFileNodes = ["LoadImage", "LoadVideo", "PreviewImage"];
+                canAcceptFile = defaultFileNodes.includes(node.type);
+                console.warn("[MetaData] pickBestMediaPathWidget unavailable, using fallback list.");
+            }
+            if (canAcceptFile) {
+                return;
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const meta = await fetchWorkflowAndPrompt(payload);
+            if (meta?.workflow) {
+                await importMetaData(node, meta.workflow, meta.prompt, event);
+            }
+        };
+
+        const onGlobalDragEnd = (e) => {
+            if (justAppliedMetadata) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                justAppliedMetadata = false;
+            }
+        };
+        window.addEventListener('drop', onGlobalDrop, true);
+        window.addEventListener('dragend', onGlobalDragEnd, true);
     },
 });
 
@@ -1128,29 +1199,22 @@ function applyCandidateToNode(targetNode, result) {
     });
 }
 
-async function importMetaData(node, e) {
-    if (!node.widgets?.length || !isFeatureEnabled()) return false;
+async function importMetaData(node, workflow, prompt, e) {
+    if (!workflow || !node.widgets?.length || !isFeatureEnabled()) return false;
 
-    const { workflow, prompt } = await extractWorkflowFromDragEvent(e);
-    if (!workflow) return false;
     const graphCtx = buildGraphCtx(workflow, prompt);
-    const strictMatches = getStrictMatches(node, graphCtx);
-    const roleMatches = getRoleMatches(node, graphCtx);
     const hasWidgetValues = (n) => Array.isArray(n.widgets_values) && n.widgets_values.length > 0;
-    const strictCandidates = strictMatches.filter(hasWidgetValues);
-    const roleCandidates = roleMatches.filter(hasWidgetValues);
-    const isCompatible = (target, cand) => {
-        if (!target || !cand) return false;
-        const tWidgets = target.widgets || [];
-        const cVals = cand.widgets_values || [];
-        if (!Array.isArray(cVals)) return false;
-        return tWidgets.every((w, i) => {
-            const cVal = cVals[i];
+    const strictCandidates = getStrictMatches(node, graphCtx).filter(hasWidgetValues);
+    const roleCandidates = getRoleMatches(node, graphCtx).filter(hasWidgetValues);
+
+    const isCompatible = (t, c) => {
+        if (!t || !c) return false;
+        const tw = t.widgets || [], cv = c.widgets_values || [];
+        if (!Array.isArray(cv)) return false;
+        return tw.every((w, i) => {
+            const cVal = cv[i];
             if (cVal === undefined) return true;
-            const tVal = w.value;
-            if (tVal !== null && cVal !== null && typeof tVal !== typeof cVal) {
-                return false;
-            }
+            if (w.value !== null && cVal !== null && typeof w.value !== typeof cVal) return false;
             return true;
         });
     };
@@ -1164,11 +1228,7 @@ async function importMetaData(node, e) {
         return true;
     }
     if (roleCandidates.length > 1 || (roleCandidates.length === 1 && !isCompatible(node, roleCandidates[0]))) {
-        const menuItems = roleCandidates.map(n => ({
-            node: n,
-            role: getNodeRole(n, graphCtx).role,
-            score: getNodeRole(n, graphCtx).score
-        }));
+        const menuItems = roleCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx).role, score: getNodeRole(n, graphCtx).score }));
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
         if (chosen) {
             applyCandidateToNode(node, chosen);
@@ -1177,11 +1237,7 @@ async function importMetaData(node, e) {
         return false;
     }
     if (strictCandidates.length > 1) {
-        const menuItems = strictCandidates.map(n => ({
-            node: n,
-            role: getNodeRole(n, graphCtx).role,
-            score: getNodeRole(n, graphCtx).score
-        }));
+        const menuItems = strictCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx).role, score: getNodeRole(n, graphCtx).score }));
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
         if (chosen) {
             applyCandidateToNode(node, chosen);
@@ -1189,5 +1245,5 @@ async function importMetaData(node, e) {
         }
         return false;
     }
-    return true;
+    return false;
 }
