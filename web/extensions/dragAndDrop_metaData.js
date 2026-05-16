@@ -144,7 +144,6 @@ const comboHasAnyModel3DValue =
         ["obj", "glb", "gltf", "ply", "stl"]
     );
 
-
 function _pickBestPathWidget(node, droppedExt, cfg) {
     const widgets =
         node?.widgets;
@@ -197,7 +196,6 @@ function _pickBestPathWidget(node, droppedExt, cfg) {
         : null;
 }
 
-
 const _IMAGE_CFG = {
     exactNames:
         new Set([
@@ -206,13 +204,11 @@ const _IMAGE_CFG = {
             "input_image",
             "source_image"
         ]),
-
     knownNodeIncludes: [
         "loadimage",
         "loadimagemask",
         "imageloader"
     ],
-
     mediaTerms: [
         "image",
         "img",
@@ -220,17 +216,10 @@ const _IMAGE_CFG = {
         "photo",
         "picture"
     ],
-
-    exactSingleNames:
-        new Set(["image"]),
-
-    looksLikeFn:
-        looksLikeImagePath,
-
-    comboChecker:
-        comboHasAnyImageValue,
+    exactSingleNames: new Set(["image"]),
+    looksLikeFn: looksLikeImagePath,
+    comboChecker: comboHasAnyImageValue,
 };
-
 
 const _VIDEO_CFG = {
     exactNames:
@@ -238,25 +227,15 @@ const _VIDEO_CFG = {
             "video",
             "video_path"
         ]),
-
     knownNodeIncludes: [
         "loadvideo",
         "videoloader"
     ],
-
-    mediaTerms:
-        ["video"],
-
-    exactSingleNames:
-        new Set(["video"]),
-
-    looksLikeFn:
-        looksLikeVideoPath,
-
-    comboChecker:
-        comboHasAnyVideoValue,
+    mediaTerms: ["video"],
+    exactSingleNames: new Set(["video"]),
+    looksLikeFn: looksLikeVideoPath,
+    comboChecker: comboHasAnyVideoValue,
 };
-
 
 const _AUDIO_CFG = {
     exactNames:
@@ -264,24 +243,12 @@ const _AUDIO_CFG = {
             "audio",
             "audio_path"
         ]),
-
-    knownNodeIncludes: [
-        "loadaudio"
-    ],
-
-    mediaTerms:
-        ["audio"],
-
-    exactSingleNames:
-        new Set(["audio"]),
-
-    looksLikeFn:
-        looksLikeAudioPath,
-
-    comboChecker:
-        comboHasAnyAudioValue,
+    knownNodeIncludes: ["loadaudio"],
+    mediaTerms: ["audio"],
+    exactSingleNames: new Set(["audio"]),
+    looksLikeFn: looksLikeAudioPath,
+    comboChecker: comboHasAnyAudioValue,
 };
-
 
 const _MODEL3D_CFG = {
     exactNames:
@@ -290,37 +257,26 @@ const _MODEL3D_CFG = {
             "mesh",
             "model_path"
         ]),
-
     knownNodeIncludes: [
         "load3d",
         "loadmodel"
     ],
-
     mediaTerms: [
         "model",
         "mesh",
         "geometry"
     ],
-
     exactSingleNames:
         new Set([
             "model",
             "mesh"
         ]),
-
-    looksLikeFn:
-        looksLikeModel3DPath,
-
-    comboChecker:
-        comboHasAnyModel3DValue,
+    looksLikeFn: looksLikeModel3DPath,
+    comboChecker: comboHasAnyModel3DValue,
 };
 
-
 function pickBestMediaPathWidget(node, payload, droppedExt) {
-    const kind =
-        String(
-            payload?.kind || ""
-        ).toLowerCase();
+    const kind = String(payload?.kind || "").toLowerCase();
     const cfg =
         kind === "image"
             ? _IMAGE_CFG
@@ -749,7 +705,7 @@ app.registerExtension({
         const onGlobalDrop = async (event) => {
             if (!isFeatureEnabled()) return;
             if (!event.dataTransfer?.types.includes(DND_MIME)) return;
-            clearHighlight(app); // убрать подсветку сразу
+            clearHighlight(app);
             justAppliedMetadata = true;
             let payload;
             try {
