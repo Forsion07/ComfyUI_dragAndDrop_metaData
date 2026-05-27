@@ -1,2 +1,2 @@
-WEB_DIRECTORY = "./web/extensions"
+WEB_DIRECTORY = "./extensions"
 NODE_CLASS_MAPPINGS = {}

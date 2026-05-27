@@ -45,251 +45,7 @@ function extractMetaDataFromBuffer(buffer) {
 }
 
 function isFeatureEnabled() {
-    return localStorage.getItem("dragAndDrop_metaData_enabled") !== "false";
-}
-// ====== Majoor media path picker (adapted) ======
-const _REJECT_TYPES = new Set([
-    "number",
-    "int",
-    "float",
-    "boolean",
-    "toggle",
-    "checkbox"
-]);
-
-const _OUTPUTY_TERMS = [
-    "output",
-    "save",
-    "export",
-    "folder",
-    "dir"
-];
-
-const _PATH_TERMS = [
-    "file",
-    "path"
-];
-
-const _PATH_HINT_TERMS = [
-    "path",
-    "file",
-    "input",
-    "src",
-    "source"
-];
-
-function looksLikeImagePath(v, ext) {
-    return typeof v === "string" &&
-        /\.(png|jpg|jpeg|webp|bmp|gif)$/i.test(v);
-}
-
-function looksLikeVideoPath(v, ext) {
-    return typeof v === "string" &&
-        /\.(mp4|webm|mov|avi|mkv)$/i.test(v);
-}
-
-function looksLikeAudioPath(v, ext) {
-    return typeof v === "string" &&
-        /\.(wav|mp3|ogg|flac)$/i.test(v);
-}
-
-function looksLikeModel3DPath(v, ext) {
-    return typeof v === "string" &&
-        /\.(obj|glb|gltf|ply|stl)$/i.test(v);
-}
-
-function comboHasValue(widget, exts) {
-    const vals =
-        widget?.options?.values;
-    if (!Array.isArray(vals))
-        return false;
-    return vals.some(v => {
-        const s =
-            typeof v === "string"
-                ? v
-                : (v?.content ??
-                    v?.value ??
-                    v?.text ??
-                    "");
-        return exts.some(
-            ext =>
-                String(s)
-                    .toLowerCase()
-                    .endsWith("." + ext)
-        );
-    });
-}
-
-const comboHasAnyImageValue =
-    w => comboHasValue(
-        w,
-        ["png", "jpg", "jpeg", "webp", "bmp", "gif"]
-    );
-
-const comboHasAnyVideoValue =
-    w => comboHasValue(
-        w,
-        ["mp4", "webm", "mov", "avi", "mkv"]
-    );
-
-const comboHasAnyAudioValue =
-    w => comboHasValue(
-        w,
-        ["wav", "mp3", "ogg", "flac"]
-    );
-
-const comboHasAnyModel3DValue =
-    w => comboHasValue(
-        w,
-        ["obj", "glb", "gltf", "ply", "stl"]
-    );
-
-function _pickBestPathWidget(node, droppedExt, cfg) {
-    const widgets =
-        node?.widgets;
-    if (!widgets?.length)
-        return null;
-    const ext = String(droppedExt || "").toLowerCase().replace(/^\./, "");
-    const nodeType = String(node?.type || "").toLowerCase();
-    const isKnownNode = cfg.knownNodeIncludes.some(p => nodeType.includes(p));
-    const candidates = [];
-    for (const w of widgets) {
-        const type =String(w?.type || "").toLowerCase();
-        const value = w?.value;
-        if (_REJECT_TYPES.has(type)) continue;
-        if (typeof value === "number") continue;
-        const stringLike =
-            type === "text" ||
-            type === "string" ||
-            type === "combo";
-        if (!stringLike) continue;
-        const name = String(w?.name || w?.label || "").toLowerCase().trim();
-        let score = 0;
-        if (cfg.exactNames.has(name)) score += 100;
-        if (
-            name === "file" &&
-            isKnownNode &&
-            type === "combo" &&
-            cfg.comboChecker(w)
-        ) score += 100;
-        if (cfg.mediaTerms.some(t => name.includes(t))
-        ) score += 80;
-        if (_PATH_TERMS.some(t => name.includes(t))
-        ) score += 35;
-        if (_OUTPUTY_TERMS.some(t => name.includes(t))
-        ) score -= 90;
-        if (cfg.exactSingleNames.has(name)) {
-            if (typeof value === "string" && value.trim() === "") {
-                score += 25;
-            } else if (cfg.looksLikeFn(value, ext)) {
-                score += 25;
-            }
-        }
-        if (isKnownNode) score += 15;
-        candidates.push({ widget: w, score});
-    }
-    candidates.sort((a, b) =>
-        b.score - a.score
-    );
-    return (candidates[0]?.score >= 20)
-        ? candidates[0].widget
-        : null;
-}
-
-const _IMAGE_CFG = {
-    exactNames:
-        new Set([
-            "image",
-            "image_path",
-            "input_image",
-            "source_image"
-        ]),
-    knownNodeIncludes: [
-        "loadimage",
-        "loadimagemask",
-        "imageloader"
-    ],
-    mediaTerms: [
-        "image",
-        "img",
-        "mask",
-        "photo",
-        "picture"
-    ],
-    exactSingleNames: new Set(["image"]),
-    looksLikeFn: looksLikeImagePath,
-    comboChecker: comboHasAnyImageValue,
-};
-
-const _VIDEO_CFG = {
-    exactNames:
-        new Set([
-            "video",
-            "video_path"
-        ]),
-    knownNodeIncludes: [
-        "loadvideo",
-        "videoloader"
-    ],
-    mediaTerms: ["video"],
-    exactSingleNames: new Set(["video"]),
-    looksLikeFn: looksLikeVideoPath,
-    comboChecker: comboHasAnyVideoValue,
-};
-
-const _AUDIO_CFG = {
-    exactNames:
-        new Set([
-            "audio",
-            "audio_path"
-        ]),
-    knownNodeIncludes: ["loadaudio"],
-    mediaTerms: ["audio"],
-    exactSingleNames: new Set(["audio"]),
-    looksLikeFn: looksLikeAudioPath,
-    comboChecker: comboHasAnyAudioValue,
-};
-
-const _MODEL3D_CFG = {
-    exactNames:
-        new Set([
-            "model",
-            "mesh",
-            "model_path"
-        ]),
-    knownNodeIncludes: [
-        "load3d",
-        "loadmodel"
-    ],
-    mediaTerms: [
-        "model",
-        "mesh",
-        "geometry"
-    ],
-    exactSingleNames:
-        new Set([
-            "model",
-            "mesh"
-        ]),
-    looksLikeFn: looksLikeModel3DPath,
-    comboChecker: comboHasAnyModel3DValue,
-};
-
-function pickBestMediaPathWidget(node, payload, droppedExt) {
-    const kind = String(payload?.kind || "").toLowerCase();
-    const cfg =
-        kind === "image"
-            ? _IMAGE_CFG
-            : kind === "audio"
-                ? _AUDIO_CFG
-                : kind === "model3d"
-                    ? _MODEL3D_CFG
-                    : _VIDEO_CFG;
-    return _pickBestPathWidget(
-        node,
-        droppedExt,
-        cfg
-    );
+    return app.ui.settings.getSettingValue("DnDMetadata.General.enable");
 }
 
 app.registerExtension({
@@ -492,6 +248,13 @@ app.registerExtension({
             name: "Reset All Settings",
             type: "text",
         });
+        app.ui.settings.addSetting({
+            id: "DnDMetadata.General.enable",
+            name: "Enable Drag & Drop Metadata Import",
+            defaultValue: true,
+            type: "boolean",
+            tooltip: "When enabled, dragging PNG with embedded workflow onto non-media nodes will import widget values."
+        });
         SETTINGS.forEach(setting => {
             app.ui.settings.addSetting(setting);
         });
@@ -626,126 +389,6 @@ app.registerExtension({
             const subgraphProto = Object.getPrototypeOf(Object.getPrototypeOf(subgraph));
             subgraphProto ? patchProto(subgraphProto) : null;
         }, 500);
-        // Majoor-Assets-Manager patch //
-        const DND_MIME = "application/x-mjr-asset";
-        let justAppliedMetadata = false;
-        const highlightState = new WeakMap();
-
-        function getHighlightState(app) {
-            let state = highlightState.get(app);
-            if (!state) {
-                state = { node: null, prev: null };
-                highlightState.set(app, state);
-            }
-            return state;
-        }
-
-        function applyHighlight(app, node) {
-            const state = getHighlightState(app);
-            if (!node || state.node === node) return;
-            clearHighlight(app);
-            state.node = node;
-            state.prev = {
-                color: node.color,
-                bgcolor: node.bgcolor,
-            };
-            node.bgcolor = "#3355ff";
-            node.color = "#a9c4ff";
-            app.canvas.setDirty(true, true);
-        }
-
-        function clearHighlight(app) {
-            const state = getHighlightState(app);
-            if (!state.node) return;
-            try {
-                state.node.color = state.prev.color;
-                state.node.bgcolor = state.prev.bgcolor;
-            } catch { }
-            state.node = null;
-            state.prev = null;
-            app.canvas.setDirty(true, true);
-        }
-
-        function getNodeUnderClientXY(app, event) {
-            const canvasEl = document.querySelector('canvas');
-            if (!app?.canvas || !canvasEl) return null;
-            const rect = canvasEl.getBoundingClientRect();
-            const scale = app.canvas.ds?.scale ?? 1;
-            const offset = app.canvas.ds?.offset ?? [0, 0];
-            const x = (event.clientX - rect.left) / scale - offset[0];
-            const y = (event.clientY - rect.top) / scale - offset[1];
-            return app.canvas.graph.getNodeOnPos(x, y);
-        }
-
-        async function fetchWorkflowAndPrompt(payload) {
-            const viewUrl = `/api/view?filename=${encodeURIComponent(payload.filename)}&type=${encodeURIComponent(payload.type)}&subfolder=${encodeURIComponent(payload.subfolder || "")}`;
-            const response = await fetch(viewUrl);
-            if (!response.ok) return null;
-            const buffer = await response.arrayBuffer();
-            return extractMetaDataFromBuffer(buffer);
-        }
-
-        const onGlobalDragOver = (event) => {
-            if (!isFeatureEnabled()) return;
-            if (!event.dataTransfer?.types.includes(DND_MIME)) return;
-            const node = getNodeUnderClientXY(app, event);
-            if (node) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                applyHighlight(app, node);
-            } else {
-                clearHighlight(app);
-            }
-        };
-
-        const onGlobalDragLeave = () => {
-            clearHighlight(app);
-        };
-
-        const onGlobalDrop = async (event) => {
-            if (!isFeatureEnabled()) return;
-            if (!event.dataTransfer?.types.includes(DND_MIME)) return;
-            clearHighlight(app);
-            justAppliedMetadata = true;
-            let payload;
-            try {
-                const raw = event.dataTransfer.getData(DND_MIME);
-                if (!raw) return;
-                payload = JSON.parse(raw);
-            } catch { return; }
-            if (!payload?.filename) return;
-            const node = getNodeUnderClientXY(app, event);
-            if (!node) return;
-            const droppedExt = String(payload.filename).split(".").pop() || "";
-            const canAcceptFile =
-                !!pickBestMediaPathWidget(
-                    node,
-                    payload,
-                    droppedExt
-                );
-            if (canAcceptFile) {
-                return;
-            }
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            const meta = await fetchWorkflowAndPrompt(payload);
-            if (meta?.workflow) {
-                await importMetaData(node, meta.workflow, meta.prompt, event);
-            }
-        };
-
-        const onGlobalDragEnd = (e) => {
-            if (justAppliedMetadata) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                justAppliedMetadata = false;
-            }
-        };
-
-        window.addEventListener("dragover", onGlobalDragOver, true);
-        window.addEventListener("dragleave", onGlobalDragLeave, true);
-        window.addEventListener('drop', onGlobalDrop, true);
-        window.addEventListener('dragend', onGlobalDragEnd, true);
     },
 });
 
@@ -1498,7 +1141,7 @@ function applyCandidateToNode(targetNode, result) {
     });
 }
 
-async function importMetaData(node, workflow, prompt, e) {
+export async function importMetaData(node, workflow, prompt, e) {
     if (!workflow || !node.widgets?.length || !isFeatureEnabled()) return false;
 
     const graphCtx = buildGraphCtx(workflow, prompt);
@@ -1546,3 +1189,26 @@ async function importMetaData(node, workflow, prompt, e) {
     }
     return false;
 }
+// Majoor integration //
+export async function importMetaDataFromPayload(node, payload, e) {
+    if (!payload?.filename) return false;
+
+    const viewUrl = `/view?filename=${encodeURIComponent(payload.filename)}&type=${encodeURIComponent(payload.type || "output")}&subfolder=${encodeURIComponent(payload.subfolder || "")}`;
+    if (payload.root_id) {
+        viewUrl += `&root_id=${encodeURIComponent(payload.root_id)}`;
+    }
+
+    const response = await fetch(viewUrl);
+    if (!response.ok) return false;
+    const buffer = await response.arrayBuffer();
+    const { workflow, prompt } = extractMetaDataFromBuffer(buffer);
+    if (!workflow) return false;
+
+    return importMetaData(node, workflow, prompt, e);
+}
+
+if (isFeatureEnabled()) {
+    window.__dragAndDropMetaData = {
+        importMetaDataFromPayload: importMetaDataFromPayload
+    }
+};
