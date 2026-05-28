@@ -1,5 +1,5 @@
-#rgthree-primitive-import-menu,
-#rgthree-mapping-proxy-panel {
+#DnDMetaData-primitive-import-menu,
+#DnDMetaData-mapping-proxy-panel {
     position: fixed !important;
     z-index: 100000 !important;
     background: rgba(20, 20, 20, 0.7) !important;
@@ -14,7 +14,7 @@
     overflow-y: auto;
 }
 
-#rgthree-primitive-import-menu {
+#DnDMetaData-primitive-import-menu {
     display: flex !important;
     flex-direction: column !important;
     max-width: 520px;
@@ -26,7 +26,7 @@
     padding: 12px 12px 12px 12px !important
 }
 
-.rgthree-mock-node-container {
+.DnDMetaData-mock-node-container {
     overflow-y: auto !important;
     overflow-x: visible !important;
     flex: 1 1 auto;
@@ -39,15 +39,15 @@
     padding-right: 6px;
     margin-bottom: 8px;
 }
-.rgthree-mock-node-container::-webkit-scrollbar {
+.DnDMetaData-mock-node-container::-webkit-scrollbar {
     width: 6px;
 }
 
-.rgthree-mock-node-container::-webkit-scrollbar-thumb {
+.DnDMetaData-mock-node-container::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 10px;
 }
-.rgthree-menu-title {
+.DnDMetaData-menu-title {
     font-weight: 600;
     font-size: 12px;
     margin-bottom: 12px;
@@ -60,17 +60,17 @@
     user-select: none;
 }
 
-#rgthree-primitive-import-menu::-webkit-scrollbar {
+#DnDMetaData-primitive-import-menu::-webkit-scrollbar {
     width: 6px;
 }
 
-#rgthree-primitive-import-menu::-webkit-scrollbar-thumb {
+#DnDMetaData-primitive-import-menu::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 10px;
 }
 
 
-.rgthree-mock-node {
+.DnDMetaData-mock-node {
     flex-shrink: 0 !important;
     width: 100%;
     box-sizing: border-box;
@@ -87,7 +87,7 @@
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
-.rgthree-mock-node:hover {
+.DnDMetaData-mock-node:hover {
     transform: scale(1.03) translateY(-2px) !important;
     background: rgba(255, 255, 255, 0.08) !important;
     border-color: rgba(255, 255, 255, 0.2) !important;
@@ -95,16 +95,16 @@
     z-index: 10;
 }
 
-#rgthree-primitive-import-menu:has(.rgthree-mock-node:hover) .rgthree-mock-node:not(:hover) {
+#DnDMetaData-primitive-import-menu:has(.DnDMetaData-mock-node:hover) .DnDMetaData-mock-node:not(:hover) {
     transform: scale(0.98) !important;
     opacity: 0.9;
 }
 
-.rgthree-mock-node:has(.rgthree-mock-widget:hover) {
+.DnDMetaData-mock-node:has(.DnDMetaData-mock-widget:hover) {
     background: rgba(0, 0, 0, 0.6) !important;
 }
 
-.rgthree-mock-node-header {
+.DnDMetaData-mock-node-header {
     padding: 7px 10px;
     font-size: 12px;
     color: #fff;
@@ -114,14 +114,14 @@
     cursor: pointer !important;
 }
 
-.rgthree-mock-node-body {
+.DnDMetaData-mock-node-body {
     padding: 8px;
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.rgthree-mock-widget {
+.DnDMetaData-mock-widget {
     background: rgba(0, 0, 0, 0.2) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 4px;
@@ -135,26 +135,26 @@
     cursor: pointer !important;
 }
 
-.rgthree-mock-widget:hover {
+.DnDMetaData-mock-widget:hover {
     background: rgba(255, 255, 255, 0.15) !important;
     color: #fff !important;
     transform: scale(1.02);
 
 }
 
-.rgthree-mock-widget.selected {
+.DnDMetaData-mock-widget.selected {
     background: rgba(0, 120, 212, 0.2) !important;
     color: #fff !important;
     border-color: #0078d4 !important;
     box-shadow: 0 0 15px rgba(0, 120, 212, 0.4) !important;
 }
 
-#rgthree-mapping-proxy-panel {
+#DnDMetaData-mapping-proxy-panel {
     width: 280px;
     display: none;
 }
 
-.rgthree-proxy-slot {
+.DnDMetaData-proxy-slot {
     background: rgba(255, 255, 255, 0.01) !important;
     border: 1px dashed rgba(255, 255, 255, 0.2);
     border-radius: 6px;
@@ -166,14 +166,14 @@
     transition: all 0.2s;
 }
 
-.rgthree-proxy-slot:hover {
+.DnDMetaData-proxy-slot:hover {
     background: rgba(0, 120, 212, 0.2) !important;
     border-color: #0078d4;
     color: #fff;
     cursor: pointer !important;
 }
 
-.rgthree-proxy-slot.mapped {
+.DnDMetaData-proxy-slot.mapped {
     border: 1px solid #2c5c41 !important;
     background: rgba(44, 92, 65, 0.3) !important;
     color: #00ff88 !important;
@@ -181,23 +181,23 @@
     cursor: alias;
 }
 
-.rgthree-proxy-slot.mapped:not(.no-hover):hover {
+.DnDMetaData-proxy-slot.mapped:not(.no-hover):hover {
     background: rgba(231, 76, 60, 0.2) !important;
     border-color: rgba(231, 76, 60, 0.5) !important;
     color: #ff4d4d !important;
 }
 
-.rgthree-proxy-slot.mapped:not(.no-hover):hover .slot-value {
+.DnDMetaData-proxy-slot.mapped:not(.no-hover):hover .slot-value {
     color: #ff4d4d;
     text-decoration: line-through;
     opacity: 0.7;
 }
-.rgthree-proxy-slot.mapped:hover .slot-name {
+.DnDMetaData-proxy-slot.mapped:hover .slot-name {
     opacity: 0.8;
 }
 
-.rgthree-mock-btn-cancel,
-.rgthree-mock-btn-apply {
+.DnDMetaData-mock-btn-cancel,
+.DnDMetaData-mock-btn-apply {
     width: 100%;
     height: 40px;
     margin-top: 0 !important;
@@ -214,11 +214,11 @@
     box-sizing: border-box !important;
 }
 
-.rgthree-mock-btn-apply {
+.DnDMetaData-mock-btn-apply {
     border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.rgthree-mock-btn-apply:hover {
+.DnDMetaData-mock-btn-apply:hover {
     background: rgba(46, 204, 113, 0.15) !important;
     color: #2ecc71 !important;
     border-color: rgba(46, 204, 113, 0.4) !important;
@@ -226,15 +226,15 @@
     transform: translateY(-1px) !important;
 }
 
-.rgthree-mock-btn-cancel:hover {
+.DnDMetaData-mock-btn-cancel:hover {
     background: rgba(220, 53, 69, 0.2) !important;
     color: #ff4d4d !important;
     border-color: rgba(220, 53, 69, 0.5) !important;
     box-shadow: 0 0 15px rgba(220, 53, 69, 0.2);
 }
 
-.rgthree-mock-btn-cancel:active,
-.rgthree-mock-btn-apply:active {
+.DnDMetaData-mock-btn-cancel:active,
+.DnDMetaData-mock-btn-apply:active {
     transform: scale(0.98);
 }
 
@@ -251,10 +251,10 @@
     color: #ce9178 !important;
 }
 
-.rgthree-mock-widget.selected .widget-value {
+.DnDMetaData-mock-widget.selected .widget-value {
     color: #fff !important;
 }
-@keyframes rgthree-flash-apply {
+@keyframes DnDMetaData-flash-apply {
     0% {
         background-color: rgba(78, 201, 176, 0.6);
         box-shadow: 0 0 12px rgba(78, 201, 176, 0.4);
@@ -269,6 +269,6 @@
 }
 
 .flash-apply {
-    animation: rgthree-flash-apply 0.4s ease-out;
+    animation: DnDMetaData-flash-apply 0.4s ease-out;
     border-radius: 4px;
 }

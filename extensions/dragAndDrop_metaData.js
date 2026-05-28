@@ -817,11 +817,11 @@ function getRoleMatches(targetNode, graphCtx) {
 
 async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
     return new Promise((resolve) => {
-        const existing = document.getElementById("rgthree-primitive-import-menu");
+        const existing = document.getElementById("DnDMetaData-primitive-import-menu");
         if (existing) existing.remove();
 
         const overlay = document.createElement("div");
-        overlay.id = "rgthree-primitive-import-menu";
+        overlay.id = "DnDMetaData-primitive-import-menu";
 
         document.body.appendChild(overlay);
         const menuWidth = 520;
@@ -839,7 +839,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         overlay.style.top = `${Math.max(8, top)}px`;
 
         const title = document.createElement("div");
-        title.className = "rgthree-menu-title";
+        title.className = "DnDMetaData-menu-title";
         title.style.cursor = "move";
         title.textContent = "::: Select node to import values from";
         overlay.appendChild(title);
@@ -886,18 +886,18 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         };
 
         const proxyPanel = document.createElement("div");
-        proxyPanel.id = "rgthree-mapping-proxy-panel";
+        proxyPanel.id = "DnDMetaData-mapping-proxy-panel";
         proxyPanel.style.display = "none";
 
         const proxyTitle = document.createElement("div");
-        proxyTitle.className = "rgthree-menu-title";
+        proxyTitle.className = "DnDMetaData-menu-title";
         proxyTitle.textContent = `Mapping to: ${targetNode.type} (ID: ${targetNode.id})`;
         proxyPanel.appendChild(proxyTitle);
         const proxySlotsElements = [];
 
         (targetNode.widgets || []).forEach((w, idx) => {
             const slot = document.createElement("div");
-            slot.className = "rgthree-proxy-slot";
+            slot.className = "DnDMetaData-proxy-slot";
             slot.innerHTML = `<span class="slot-name">${w.label || w.name || `Widget ${idx}`}</span> <span class="slot-value"></span>`;
             const valueSpan = slot.querySelector(".slot-value");
             proxySlotsElements[idx] = { slot, valueSpan };
@@ -928,7 +928,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         });
 
         const btnApplyManual = document.createElement("button");
-        btnApplyManual.className = "rgthree-mock-btn-apply";
+        btnApplyManual.className = "DnDMetaData-mock-btn-apply";
         btnApplyManual.textContent = "Apply";
         btnApplyManual.onclick = () => closeMenu({ action: "manual", mapping });
         proxyPanel.appendChild(btnApplyManual);
@@ -945,15 +945,15 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         };
 
         const scrollBox = document.createElement("div");
-        scrollBox.className = "rgthree-mock-node-container";
+        scrollBox.className = "DnDMetaData-mock-node-container";
         overlay.appendChild(scrollBox);
 
         for (const { node, role, score } of candidates) {
             const container = document.createElement("div");
-            container.className = "rgthree-mock-node";
+            container.className = "DnDMetaData-mock-node";
 
             const header = document.createElement("div");
-            header.className = "rgthree-mock-node-header";
+            header.className = "DnDMetaData-mock-node-header";
             header.style.backgroundColor = ROLE_COLORS[role] || ROLE_COLORS.unknown;
 
             const label = (typeof toNodeLabel === 'function') ? toNodeLabel(node) : (node.type || 'Node');
@@ -962,7 +962,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             container.appendChild(header);
 
             const body = document.createElement("div");
-            body.className = "rgthree-mock-node-body";
+            body.className = "DnDMetaData-mock-node-body";
             body.onclick = (e) => {
                 if (e.target === body) closeMenu({ node, action: "direct" }, e);
             };
@@ -997,7 +997,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                 if (text === "" && !Array.isArray(val)) continue;
                 const preview = text.length > 100 ? text.slice(0, 100) + "..." : text;
                 const widgetLine = document.createElement("div");
-                widgetLine.className = "rgthree-mock-widget";
+                widgetLine.className = "DnDMetaData-mock-widget";
                 let typeClass = "";
                 if (typeof val === 'number') {
                     typeClass = "type-number";
@@ -1051,7 +1051,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
 
             if (body.children.length === 0) {
                 const emptyMsg = document.createElement("div");
-                emptyMsg.className = "rgthree-mock-widget-empty";
+                emptyMsg.className = "DnDMetaData-mock-widget-empty";
                 emptyMsg.textContent = "(no widget values)";
                 body.appendChild(emptyMsg);
             }
@@ -1061,7 +1061,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         }
 
         const cancelBtn = document.createElement("button");
-        cancelBtn.className = "rgthree-mock-btn-cancel";
+        cancelBtn.className = "DnDMetaData-mock-btn-cancel";
         cancelBtn.textContent = "Cancel";
         cancelBtn.onclick = (e) => closeMenu(null, e);
         overlay.appendChild(cancelBtn);
