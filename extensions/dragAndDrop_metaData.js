@@ -95,6 +95,14 @@ app.registerExtension({
                 attrs: { min: 0, max: 5, step: 1 },
                 tooltip: "Filters out roles with a score lower than given number"
             },
+            {
+                id: "DnDMetadata.General.multiRoleAccuracy",
+                name: "🎯 MultiRoleAccuracy",
+                defaultValue: 2,
+                type: "slider",
+                attrs: { min: 0, max: 5, step: 1 },
+                tooltip: "Filters out roles for multiRole with a score lower than given number"
+            },
             // Model //
             {
                 id: "DnDMetadata.1-Model.WidgetHints",
@@ -705,8 +713,9 @@ function getNodeRole(node, graphCtx, options = {}) {
     } = options;
     const hasWidgetsStrings = node.widgets_values?.some(v => /[\w\d]/.test(v));
     const hasOutLinks = node.outputs.some(o => o.links !== null && o.links.length);
-    if (!allowNoLinks && !hasOutLinks) return { role: "unknown", score: 0 };;
-    if (!allowEmptyWidgets && !hasWidgetsStrings) return { role: "unknown", score: 0 };;
+    const defaultRole = { multiRole: [], name: "unknown", score: 0 };
+    if (!allowNoLinks && !hasOutLinks) return defaultRole;
+    if (!allowEmptyWidgets && !hasWidgetsStrings) return defaultRole;
     let score = {
         unknown: 0,
         model: 0,
@@ -739,6 +748,7 @@ function getNodeRole(node, graphCtx, options = {}) {
         latentDownstreamHints: app.ui.settings.getSettingValue("DnDMetadata.7-Latent.DownstreamHints"),
         latentNodeHints: app.ui.settings.getSettingValue("DnDMetadata.7-Latent.NodeHints"),
     };
+    const multiRoleAccuracy = app.ui.settings.getSettingValue("DnDMetadata.General.multiRoleAccuracy")
     const type = node?.type.toLowerCase();
     const title = node?.title?.toLowerCase();
     const widgetValues = analyzeWidgets(node, graphCtx);
@@ -781,10 +791,12 @@ function getNodeRole(node, graphCtx, options = {}) {
     if (downstream.reachesLatent) score.latent += 1 * scoreModifier.latentDownstreamHints;
     score.latent += nodeHasAnyKeyword(["latent"], title, type, ...outStrings) ? 1 * scoreModifier.latentNodeHints : -1;
 
-    const result = Object.entries(score).reduce(
-        (max, curr) =>
-            curr[1] > max[1] ? curr : max);
-    return { role: result[0], score: result[1] };
+    const roles = Object.entries(score)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, score]) => ({ name, score }));
+    const mainRole = roles[0];
+    const multiRole = mainRole.score > 0 ? roles.filter(r => r.score > 0 && mainRole.score - r.score <= multiRoleAccuracy) : [];
+    return { multiRole, name: mainRole.name, score: mainRole.score };
 }
 
 function getRoleMatches(targetNode, graphCtx) {
@@ -794,18 +806,19 @@ function getRoleMatches(targetNode, graphCtx) {
         allowNoLinks: true
     };
     const accuracy = app.ui.settings.getSettingValue("DnDMetadata.General.Accuracy");
-    const targetRole = getNodeRole(targetNode, graphCtx, options).role;
-    if (!targetRole || targetRole === "unknown") {
+    const targetRole = getNodeRole(targetNode, graphCtx, options);
+    if (!targetRole || targetRole.name === "unknown") {
         return [];
     }
     const candidateNodes = (graphCtx.allActiveNodes || []).filter(candidate => {
         const candidateRole = getNodeRole(candidate, graphCtx);
-        if (candidateRole.role === targetRole && candidateRole.score >= accuracy) {
+        const roleMatch = targetRole.multiRole.some(tRole => candidateRole.score >= accuracy && tRole.name === candidateRole.name);
+        if (roleMatch) {
             return true;
         }
         if (
-            targetRole === "prompt" &&
-            (candidateRole.role === "positive" || candidateRole.role === "negative")
+            targetRole.name === "prompt" &&
+            (candidateRole.name === "positive" || candidateRole.name === "negative")
         ) {
             return true;
         }
@@ -813,6 +826,21 @@ function getRoleMatches(targetNode, graphCtx) {
     });
 
     return candidateNodes;
+}
+
+function buildRoleGradient(multiRole) {
+    const ROLE_COLORS = {
+        latent: "#82366b", model: "#4e3573", lora: "#2C8E66",
+        positive: "#386641", negative: "#732c2c", samplerParams: "#907130",
+        prompt: "#733e2c", unknown: "#333333"
+    };
+    const totalScore = multiRole.reduce((sum, role) => sum + role.score,0);
+    let currentPercent = 0;
+    const stops = multiRole.map(role => {
+        currentPercent += (role.score / totalScore) * 100;
+        return `${ROLE_COLORS[role.name] || ROLE_COLORS.unknown} ${currentPercent}%`;
+    });
+    return `linear-gradient(90deg, ${stops.join(", ")})`;
 }
 
 async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
@@ -860,11 +888,6 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             title.style.background = "";
         });
 
-        const ROLE_COLORS = {
-            latent: "#82366b", model: "#4e3573", lora: "#2C8E66",
-            positive: "#386641", negative: "#732c2c", samplerParams: "#907130",
-            prompt: "#733e2c", unknown: "#333333"
-        };
         let selectedValue = null;
         let selectedWidgetEl = null;
         const mapping = {};
@@ -948,16 +971,16 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         scrollBox.className = "DnDMetaData-mock-node-container";
         overlay.appendChild(scrollBox);
 
-        for (const { node, role, score } of candidates) {
+        for (const { node, role } of candidates) {
             const container = document.createElement("div");
             container.className = "DnDMetaData-mock-node";
 
             const header = document.createElement("div");
             header.className = "DnDMetaData-mock-node-header";
-            header.style.backgroundColor = ROLE_COLORS[role] || ROLE_COLORS.unknown;
+            header.style.background = buildRoleGradient(role.multiRole);
 
             const label = (typeof toNodeLabel === 'function') ? toNodeLabel(node) : (node.type || 'Node');
-            header.textContent = `${label}-score[${score}]`;
+            header.textContent = `${label}-score[${role.score}]`;
             header.onclick = (e) => closeMenu({ node, action: "direct" }, e);
             container.appendChild(header);
 
@@ -1170,7 +1193,7 @@ export async function importMetaData(node, workflow, prompt, e) {
         return true;
     }
     if (roleCandidates.length > 1 || (roleCandidates.length === 1 && !isCompatible(node, roleCandidates[0]))) {
-        const menuItems = roleCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx).role, score: getNodeRole(n, graphCtx).score }));
+        const menuItems = roleCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx) }));
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
         if (chosen) {
             applyCandidateToNode(node, chosen);
@@ -1179,7 +1202,7 @@ export async function importMetaData(node, workflow, prompt, e) {
         return false;
     }
     if (strictCandidates.length > 1) {
-        const menuItems = strictCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx).role, score: getNodeRole(n, graphCtx).score }));
+        const menuItems = strictCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx) }));
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
         if (chosen) {
             applyCandidateToNode(node, chosen);
