@@ -18,10 +18,9 @@
     display: flex !important;
     flex-direction: column !important;
     max-width: 520px;
-    max-height: 75vh;
+    max-height: calc(100vh - 16px);
     overflow-y: auto;
     overflow-x: hidden;
-    overflow: hidden !important;
     box-sizing: border-box !important;
     padding: 12px 12px 12px 12px !important
 }

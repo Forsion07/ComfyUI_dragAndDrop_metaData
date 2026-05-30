@@ -869,6 +869,54 @@ function buildRoleGradient(multiRole) {
     return `linear-gradient(90deg, ${stops.join(", ")})`;
 }
 
+function fitMenuToViewport(overlay, scrollBox) {
+    const SCREEN_MARGIN = 8;
+    const MIN_LIST_HEIGHT = 250;
+    const reservedSpace =
+        overlay.offsetHeight -
+        scrollBox.offsetHeight;
+    const rect = overlay.getBoundingClientRect();
+    const maxAvailableHeight =
+        window.innerHeight -
+        rect.top -
+        SCREEN_MARGIN;
+    const targetHeight = Math.max(
+        MIN_LIST_HEIGHT,
+        maxAvailableHeight - reservedSpace
+    );
+
+    scrollBox.style.maxHeight = `${targetHeight}px`;
+    const newRect = overlay.getBoundingClientRect();
+    const maxTop =
+        window.innerHeight -
+        newRect.height -
+        SCREEN_MARGIN;
+
+    if (newRect.top > maxTop) {
+        overlay.style.top =
+            `${Math.max(
+                SCREEN_MARGIN,
+                maxTop
+            )}px`;
+    }
+}
+
+function keepInsideViewport(element) {
+    const SCREEN_MARGIN = 8;
+
+    const rect = element.getBoundingClientRect();
+
+    if (rect.bottom > window.innerHeight - SCREEN_MARGIN) {
+        element.style.top =
+            `${Math.max(
+                SCREEN_MARGIN,
+                window.innerHeight -
+                rect.height -
+                SCREEN_MARGIN
+            )}px`;
+    }
+}
+
 async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
     return new Promise((resolve) => {
         const existing = document.getElementById("DnDMetaData-primitive-import-menu");
@@ -876,21 +924,8 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
 
         const overlay = document.createElement("div");
         overlay.id = "DnDMetaData-primitive-import-menu";
-
-        document.body.appendChild(overlay);
-        const menuWidth = 520;
-        const menuHeight = Math.min(window.innerHeight * 0.7, candidates.length * 150);
-        let left = e.clientX || 8;
-        let top = e.clientY || 8;
-        const offset = 40;
-        if (left + menuWidth > window.innerWidth) {
-            left = window.innerWidth - menuWidth - 20;
-        }
-        if (top + menuHeight > window.innerHeight) {
-            top = window.innerHeight - menuHeight - offset;
-        }
-        overlay.style.left = `${Math.max(8, left)}px`;
-        overlay.style.top = `${Math.max(8, top)}px`;
+        overlay.style.left = `${e.clientX}px`;
+        overlay.style.top = `${e.clientY}px`;
 
         const title = document.createElement("div");
         title.className = "DnDMetaData-menu-title";
@@ -906,8 +941,15 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         };
         window.addEventListener("mousemove", (e) => {
             if (!isDragging) return;
-            overlay.style.left = `${e.clientX - offsetX}px`;
-            overlay.style.top = `${e.clientY - offsetY}px`;
+            overlay.style.left = `${Math.max(
+                8,
+                e.clientX - offsetX
+            )}px`;
+            overlay.style.top = `${Math.max(
+                8,
+                e.clientY - offsetY
+            )}px`;
+            fitMenuToViewport(overlay, scrollBox);
         });
         window.addEventListener("mouseup", () => {
             isDragging = false;
@@ -1091,6 +1133,9 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                     }
                     const menuRect = overlay.getBoundingClientRect();
                     proxyPanel.style.display = "block";
+                    requestAnimationFrame(() => {
+                        keepInsideViewport(proxyPanel)
+                    });
                     proxyPanel.style.left = `${menuRect.right + 20}px`;
                     proxyPanel.style.top = `${menuRect.top}px`;
                 };
@@ -1117,6 +1162,10 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
 
         document.body.appendChild(overlay);
         document.body.appendChild(proxyPanel);
+
+        requestAnimationFrame(() => {
+            fitMenuToViewport(overlay, scrollBox);
+        });
 
         setTimeout(() => {
             const onOutsideClick = (evt) => {
