@@ -449,8 +449,15 @@ function buildGraphCtx(workflow, prompt) {
             }
         }
     }
+    const inActiveSub = (node) => {
+        if (typeof node.id === "string") {
+            const getSuProxyNodebId = parseInt(node.id, 10);
+            return subsProxyNodesById.get(getSuProxyNodebId).mode === 0 ?? false;
+        }
+        return true
+    }
     const allNodesById = new Map(allNodes.map(n => [n.id, n]));
-    const allActiveNodes = allNodes.filter(n => n.mode === 0);
+    const allActiveNodes = allNodes.filter(n => n.mode === 0 && inActiveSub(n));
     return {
         promptData,
         nodes,
