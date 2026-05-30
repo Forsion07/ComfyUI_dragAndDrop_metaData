@@ -305,6 +305,14 @@ app.registerExtension({
             };
             inputContainer.appendChild(button);
         };
+        function updateResetButtonState(button, setting) {
+            const currentValue = app.ui.settings.getSettingValue(setting.id);
+            const changed = currentValue !== setting.defaultValue;
+            button.style.boxShadow = changed
+                ? "0 0 6px rgba(151, 151, 151, 0.8)"
+                : "none";
+            button.style.opacity = changed ? "1" : "0.5";
+        }
         function injectIndividualResetButtons() {
             for (const setting of SETTINGS) {
                 const row = document.querySelector(
@@ -319,6 +327,7 @@ app.registerExtension({
                     continue;
                 }
                 const resetBtn = document.createElement("button");
+                resetBtn.className = "dnd-reset-btn";
                 resetBtn.innerHTML = "↺";
                 resetBtn.title = "Reset to default";
                 resetBtn.style.marginLeft = "8px";
@@ -330,6 +339,7 @@ app.registerExtension({
                 resetBtn.style.fontSize = "12px";
                 resetBtn.style.flexShrink = "0";
                 resetBtn.style.transition = "all 0.15s ease";
+                updateResetButtonState(resetBtn, setting);
                 resetBtn.onclick = async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -337,14 +347,23 @@ app.registerExtension({
                         setting.id,
                         setting.defaultValue
                     );
+                    updateResetButtonState(resetBtn, setting);
                 };
                 inputContainer.appendChild(resetBtn);
             }
         };
+        function refreshResetButtons() {
+            for (const setting of SETTINGS) {
+                const row = document.querySelector(`[data-setting-id="${setting.id}"]`);
+                const btn = row?.querySelector(".dnd-reset-btn");
+                if (!btn) continue;
+                updateResetButtonState(btn, setting);
+            }
+        }
         const observer = new MutationObserver(() => {
             injectResetButton();
             injectIndividualResetButtons();
-
+            refreshResetButtons();
         });
         observer.observe(document.body, {
             childList: true,
