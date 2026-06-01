@@ -903,17 +903,21 @@ function fitMenuToViewport(overlay, scrollBox) {
 
 function keepInsideViewport(element) {
     const SCREEN_MARGIN = 8;
+    const naturalHeight = element.getBoundingClientRect().height;
+    const currentTop = element.getBoundingClientRect().top;
+    const maxBottom = window.innerHeight - SCREEN_MARGIN;
 
-    const rect = element.getBoundingClientRect();
+    if (currentTop + naturalHeight <= maxBottom) {
+        return;
+    }
 
-    if (rect.bottom > window.innerHeight - SCREEN_MARGIN) {
-        element.style.top =
-            `${Math.max(
-                SCREEN_MARGIN,
-                window.innerHeight -
-                rect.height -
-                SCREEN_MARGIN
-            )}px`;
+    const newTop = maxBottom - naturalHeight;
+
+    if (newTop >= SCREEN_MARGIN) {
+        element.style.top = newTop + 'px';
+    } else {
+        element.style.top = SCREEN_MARGIN + 'px';
+        element.style.maxHeight = (window.innerHeight - 2 * SCREEN_MARGIN) + 'px';
     }
 }
 
@@ -922,8 +926,39 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         const existing = document.getElementById("DnDMetaData-primitive-import-menu");
         if (existing) existing.remove();
 
+        let dragState = null
+
+        window.addEventListener('mousemove', (e) => {
+            if (!dragState) return;
+            const { element, offsetX, offsetY, onMove} = dragState;
+            element.style.left = Math.max(8, e.clientX - offsetX) + 'px';
+            element.style.top = Math.max(8, e.clientY - offsetY) + 'px';
+            if (onMove) onMove();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (!dragState) return;
+            dragState.handle.style.background = "";
+            dragState = null;
+        });
+
+        function makeDraggable(handle, onMove) {
+            handle.addEventListener('mousedown', (e) => {
+                const draggable = handle.closest('.draggable-panel');
+                if (!draggable) return;
+                dragState = {
+                    element: draggable,
+                    offsetX: e.clientX - draggable.offsetLeft,
+                    offsetY: e.clientY - draggable.offsetTop,
+                    handle,
+                    onMove,
+                };
+            });
+        }
+
         const overlay = document.createElement("div");
         overlay.id = "DnDMetaData-primitive-import-menu";
+        overlay.classList.add("draggable-panel");
         overlay.style.left = `${e.clientX}px`;
         overlay.style.top = `${e.clientY}px`;
 
@@ -932,29 +967,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         title.style.cursor = "move";
         title.textContent = "::: Select node to import values from";
         overlay.appendChild(title);
-        let isDragging = false;
-        let offsetX, offsetY;
-        title.onmousedown = (e) => {
-            isDragging = true;
-            offsetX = e.clientX - overlay.offsetLeft;
-            offsetY = e.clientY - overlay.offsetTop;
-        };
-        window.addEventListener("mousemove", (e) => {
-            if (!isDragging) return;
-            overlay.style.left = `${Math.max(
-                8,
-                e.clientX - offsetX
-            )}px`;
-            overlay.style.top = `${Math.max(
-                8,
-                e.clientY - offsetY
-            )}px`;
-            fitMenuToViewport(overlay, scrollBox);
-        });
-        window.addEventListener("mouseup", () => {
-            isDragging = false;
-            title.style.background = "";
-        });
+        makeDraggable(title, () => fitMenuToViewport(overlay, scrollBox));
 
         let selectedValue = null;
         let selectedWidgetEl = null;
@@ -978,13 +991,20 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
 
         const proxyPanel = document.createElement("div");
         proxyPanel.id = "DnDMetaData-mapping-proxy-panel";
+        proxyPanel.classList.add("draggable-panel");
         proxyPanel.style.display = "none";
 
         const proxyTitle = document.createElement("div");
         proxyTitle.className = "DnDMetaData-menu-title";
         proxyTitle.textContent = `Mapping to: ${targetNode.type} (ID: ${targetNode.id})`;
+        proxyTitle.style.cursor = "move";
         proxyPanel.appendChild(proxyTitle);
         const proxySlotsElements = [];
+        makeDraggable(proxyTitle, () => fitMenuToViewport(proxyPanel, proxyWidgetsContainer));
+
+        const proxyWidgetsContainer = document.createElement("div");
+        proxyWidgetsContainer.className = "DnDMetaData-proxy-widgets-container";
+        proxyPanel.appendChild(proxyWidgetsContainer);
 
         (targetNode.widgets || []).forEach((w, idx) => {
             const slot = document.createElement("div");
@@ -1015,7 +1035,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                     }
                 }
             };
-            proxyPanel.appendChild(slot);
+            proxyWidgetsContainer.appendChild(slot);
         });
 
         const btnApplyManual = document.createElement("button");
@@ -1132,12 +1152,15 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                         selectedValue = val;
                     }
                     const menuRect = overlay.getBoundingClientRect();
-                    proxyPanel.style.display = "block";
-                    requestAnimationFrame(() => {
-                        keepInsideViewport(proxyPanel)
-                    });
-                    proxyPanel.style.left = `${menuRect.right + 20}px`;
-                    proxyPanel.style.top = `${menuRect.top}px`;
+                    const newLeft = `${menuRect.right + 20}px`;
+                    const newTop = `${menuRect.top}px`;
+
+                    if (proxyPanel.style.display === 'flex') return;
+
+                    proxyPanel.style.display = "flex";
+                    proxyPanel.style.left = newLeft;
+                    proxyPanel.style.top = newTop;
+                    keepInsideViewport(proxyPanel);
                 };
 
                 body.appendChild(widgetLine);
