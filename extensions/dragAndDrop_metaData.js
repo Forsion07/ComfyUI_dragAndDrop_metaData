@@ -921,26 +921,60 @@ function keepInsideViewport(element) {
     }
 }
 
+const PANEL_ANIM_MS = 220;
+
+function showPanel(panel) {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => panel.classList.remove("hidden"));
+    });
+}
+
+function hidePanel(panel) {
+    return new Promise((resolve) => {
+        if (panel.classList.contains("hidden")) {
+            resolve();
+            return;
+        }
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            panel.removeEventListener("transitionend", onEnd);
+            resolve();
+        };
+        const onEnd = (evt) => {
+            if (evt.target === panel && evt.propertyName === "opacity") finish();
+        };
+        panel.addEventListener("transitionend", onEnd);
+        panel.classList.add("hidden");
+        setTimeout(finish, PANEL_ANIM_MS + 40);
+    });
+}
+
 async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
     return new Promise((resolve) => {
-        const existing = document.getElementById("DnDMetaData-primitive-import-menu");
-        if (existing) existing.remove();
+        document.getElementById("DnDMetaData-nodeMenu-container")?.remove();
+        document.getElementById("DnDMetaData-proxy-node-container")?.remove();
 
-        let dragState = null
+        let settled = false;
+        let dragState = null;
 
-        window.addEventListener('mousemove', (e) => {
+        const onMouseMove = (evt) => {
             if (!dragState) return;
-            const { element, offsetX, offsetY, onMove} = dragState;
-            element.style.left = Math.max(8, e.clientX - offsetX) + 'px';
-            element.style.top = Math.max(8, e.clientY - offsetY) + 'px';
-            if (onMove) onMove();
-        });
+            const { element, offsetX, offsetY, onMove } = dragState;
+            element.style.left = Math.max(8, evt.clientX - offsetX) + 'px';
+            element.style.top = Math.max(8, evt.clientY - offsetY) + 'px';
+            onMove?.();
+        };
 
-        window.addEventListener('mouseup', () => {
+        const onMouseUp = () => {
             if (!dragState) return;
             dragState.handle.style.background = "";
             dragState = null;
-        });
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
 
         function makeDraggable(handle, onMove) {
             handle.addEventListener('mousedown', (e) => {
@@ -955,19 +989,27 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                 };
             });
         }
+        const dropX = e?.clientX ?? window.innerWidth / 2;
+        const dropY = e?.clientY ?? window.innerHeight / 2;
 
-        const overlay = document.createElement("div");
-        overlay.id = "DnDMetaData-primitive-import-menu";
-        overlay.classList.add("draggable-panel");
-        overlay.style.left = `${e.clientX}px`;
-        overlay.style.top = `${e.clientY}px`;
+        const nodeMenuContainer = document.createElement("div");
+        nodeMenuContainer.id = "DnDMetaData-nodeMenu-container";
+        nodeMenuContainer.classList.add("draggable-panel");
+        nodeMenuContainer.style.left = `${dropX}px`;
+        nodeMenuContainer.style.top = `${dropY}px`;
+        document.body.appendChild(nodeMenuContainer);
+
+        const nodeMenu = document.createElement("div");
+        nodeMenu.id = "DnDMetaData-nodeMenu";
+        nodeMenu.classList.add("hidden");
+        nodeMenuContainer.appendChild(nodeMenu);
 
         const title = document.createElement("div");
         title.className = "DnDMetaData-menu-title";
         title.style.cursor = "move";
         title.textContent = "::: Select node to import values from";
-        overlay.appendChild(title);
-        makeDraggable(title, () => fitToViewport(overlay, scrollBox));
+        nodeMenu.appendChild(title);
+        makeDraggable(title, () => fitToViewport(nodeMenuContainer, nodeMenuScrollContainer));
 
         let selectedValue = null;
         let selectedWidgetEl = null;
@@ -988,11 +1030,15 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             slotEl.addEventListener("mouseleave", removeBlock);
             setTimeout(removeBlock, 800);
         };
+        const proxyPanelContainer = document.createElement("div");
+        proxyPanelContainer.id = "DnDMetaData-proxy-node-container";
+        proxyPanelContainer.classList.add("draggable-panel");
 
         const proxyPanel = document.createElement("div");
-        proxyPanel.id = "DnDMetaData-mapping-proxy-panel";
-        proxyPanel.classList.add("draggable-panel");
-        proxyPanel.style.display = "none";
+        proxyPanel.id = "DnDMetaData-proxy-node";
+        proxyPanel.classList.add("hidden");
+        proxyPanelContainer.appendChild(proxyPanel);
+        //proxyPanel.style.display = "none";
 
         const proxyTitle = document.createElement("div");
         proxyTitle.className = "DnDMetaData-menu-title";
@@ -1000,7 +1046,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         proxyTitle.style.cursor = "move";
         proxyPanel.appendChild(proxyTitle);
         const proxySlotsElements = [];
-        makeDraggable(proxyTitle, () => fitToViewport(proxyPanel, proxyWidgetsContainer));
+        makeDraggable(proxyTitle, () => fitToViewport(proxyPanelContainer, proxyWidgetsContainer));
 
         const proxyWidgetsContainer = document.createElement("div");
         proxyWidgetsContainer.className = "DnDMetaData-proxy-widgets-container";
@@ -1044,20 +1090,34 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         btnApplyManual.onclick = () => closeMenu({ action: "manual", mapping });
         proxyPanel.appendChild(btnApplyManual);
         const closeMenu = (selectedResult, evt) => {
+            if (settled) return;
+            settled = true;
             if (evt) {
                 evt.preventDefault();
                 evt.stopPropagation();
                 evt.stopImmediatePropagation();
             }
-            if (overlay._cleanup) overlay._cleanup();
-            overlay.remove();
-            proxyPanel.remove();
-            resolve(selectedResult || { action: "cancelled" });
+            nodeMenuContainer._cleanup?.();
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+
+            const panelsToHide = [nodeMenu];
+            if (!proxyPanel.classList.contains("hidden")) {
+                panelsToHide.push(proxyPanel);
+            }
+            const result = selectedResult ?? { action: "cancelled" };
+            Promise.all(panelsToHide.map(hidePanel)).then(() => {
+                nodeMenuContainer.remove();
+                if (proxyPanelContainer.isConnected) {
+                    proxyPanelContainer.remove();
+                }
+                resolve(result);
+            });
         };
 
-        const scrollBox = document.createElement("div");
-        scrollBox.className = "DnDMetaData-mock-node-container";
-        overlay.appendChild(scrollBox);
+        const nodeMenuScrollContainer = document.createElement("div");
+        nodeMenuScrollContainer.className = "DnDMetaData-mock-node-container";
+        nodeMenu.appendChild(nodeMenuScrollContainer);
 
         for (const { node, role } of candidates) {
             const container = document.createElement("div");
@@ -1151,16 +1211,21 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                         selectedWidgetEl = widgetLine;
                         selectedValue = val;
                     }
-                    const menuRect = overlay.getBoundingClientRect();
+                    const menuRect = nodeMenuContainer.getBoundingClientRect();
                     const newLeft = `${menuRect.right + 20}px`;
                     const newTop = `${menuRect.top}px`;
 
-                    if (proxyPanel.style.display === 'flex') return;
+                    if (!proxyPanel.classList.contains('hidden')) return;
 
-                    proxyPanel.style.display = "flex";
-                    proxyPanel.style.left = newLeft;
-                    proxyPanel.style.top = newTop;
-                    keepInsideViewport(proxyPanel);
+                    requestAnimationFrame(() => {
+                        if (!proxyPanelContainer.isConnected) {
+                            document.body.appendChild(proxyPanelContainer);
+                        }
+                        proxyPanelContainer.style.left = newLeft;
+                        proxyPanelContainer.style.top = newTop;
+                        keepInsideViewport(proxyPanelContainer);
+                        requestAnimationFrame(() => showPanel(proxyPanel));
+                    });
                 };
 
                 body.appendChild(widgetLine);
@@ -1174,26 +1239,24 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             }
 
             container.appendChild(body);
-            scrollBox.appendChild(container);
+            nodeMenuScrollContainer.appendChild(container);
         }
 
         const cancelBtn = document.createElement("button");
         cancelBtn.className = "DnDMetaData-mock-btn-cancel";
         cancelBtn.textContent = "Cancel";
         cancelBtn.onclick = (e) => closeMenu(null, e);
-        overlay.appendChild(cancelBtn);
-
-        document.body.appendChild(overlay);
-        document.body.appendChild(proxyPanel);
+        nodeMenu.appendChild(cancelBtn);
 
         requestAnimationFrame(() => {
-            fitToViewport(overlay, scrollBox);
+            fitToViewport(nodeMenuContainer, nodeMenuScrollContainer);
+            requestAnimationFrame(() => showPanel(nodeMenu));
         });
 
         setTimeout(() => {
             const onOutsideClick = (evt) => {
-                const isInsideMenu = overlay.contains(evt.target);
-                const isInsideProxy = proxyPanel.contains(evt.target);
+                const isInsideMenu = nodeMenuContainer.contains(evt.target);
+                const isInsideProxy = proxyPanelContainer.contains(evt.target);
 
                 if (!isInsideMenu && !isInsideProxy) {
                     evt.preventDefault();
@@ -1212,7 +1275,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
             window.addEventListener("pointerdown", onOutsideClick, true);
             window.addEventListener("keydown", onKeydown, true);
 
-            overlay._cleanup = () => {
+            nodeMenuContainer._cleanup = () => {
                 window.removeEventListener("pointerdown", onOutsideClick, true);
                 window.removeEventListener("keydown", onKeydown, true);
             };
@@ -1293,20 +1356,18 @@ export async function importMetaData(node, workflow, prompt, e) {
     if (roleCandidates.length > 1 || (roleCandidates.length === 1 && !isCompatible(node, roleCandidates[0]))) {
         const menuItems = roleCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx) }));
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
-        if (chosen) {
+        if (chosen?.action && chosen.action !== "cancelled") {
             applyCandidateToNode(node, chosen);
-            return true;
         }
-        return false;
+        return true;
     }
     if (strictCandidates.length > 1) {
         const menuItems = strictCandidates.map(n => ({ node: n, role: getNodeRole(n, graphCtx) }));
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
-        if (chosen) {
+        if (chosen?.action && chosen.action !== "cancelled") {
             applyCandidateToNode(node, chosen);
-            return true;
         }
-        return false;
+        return true;
     }
     return false;
 }

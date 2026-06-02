@@ -1,7 +1,13 @@
-#DnDMetaData-primitive-import-menu,
-#DnDMetaData-mapping-proxy-panel {
+#DnDMetaData-nodeMenu-container,
+#DnDMetaData-proxy-node-container {
     position: fixed !important;
     z-index: 100000 !important;
+    pointer-events: none;
+    width: fit-content;
+    height: fit-content;
+}
+#DnDMetaData-nodeMenu,
+#DnDMetaData-proxy-node {
     background: rgba(20, 20, 20, 0.7) !important;
     backdrop-filter: blur(12px) saturate(160%) !important;
     -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
@@ -12,9 +18,21 @@
     color: #eee !important;
     background-attachment: local !important;
     overflow-y: auto;
+    will-change: transform, opacity, filter;
+    transform-origin: top center;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+        opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        filter 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        visibility 0s linear 0s;
 }
 
-#DnDMetaData-primitive-import-menu {
+#DnDMetaData-nodeMenu {
     display: flex !important;
     flex-direction: column !important;
     max-width: 520px;
@@ -59,11 +77,11 @@
     user-select: none;
 }
 
-#DnDMetaData-primitive-import-menu::-webkit-scrollbar {
+#DnDMetaData-nodeMenu::-webkit-scrollbar {
     width: 6px;
 }
 
-#DnDMetaData-primitive-import-menu::-webkit-scrollbar-thumb {
+#DnDMetaData-nodeMenu::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 10px;
 }
@@ -94,7 +112,7 @@
     z-index: 10;
 }
 
-#DnDMetaData-primitive-import-menu:has(.DnDMetaData-mock-node:hover) .DnDMetaData-mock-node:not(:hover) {
+#DnDMetaData-nodeMenu:has(.DnDMetaData-mock-node:hover) .DnDMetaData-mock-node:not(:hover) {
     transform: scale(0.98) !important;
     opacity: 0.9;
 }
@@ -148,7 +166,7 @@
     box-shadow: 0 0 15px rgba(0, 120, 212, 0.4) !important;
 }
 
-#DnDMetaData-mapping-proxy-panel {
+#DnDMetaData-proxy-node {
     width: 280px;
     display: flex;
     flex-direction: column;
@@ -284,4 +302,18 @@
 .flash-apply {
     animation: DnDMetaData-flash-apply 0.4s ease-out;
     border-radius: 4px;
+}
+
+#DnDMetaData-nodeMenu.hidden,
+#DnDMetaData-proxy-node.hidden {
+    opacity: 0;
+    transform: translateY(16px) scale(0.92);
+    filter: blur(14px);
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+        opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        filter 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        visibility 0s linear 220ms;
 }
