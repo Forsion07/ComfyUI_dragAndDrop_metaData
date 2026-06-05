@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { pickBestMediaPathWidget } from "./Majoor-functions.js";
 
 function extractMetaDataFromBuffer(buffer) {
     const view = new DataView(buffer);
@@ -323,6 +324,135 @@ app.registerExtension({
             const subgraphProto = Object.getPrototypeOf(Object.getPrototypeOf(subgraph));
             subgraphProto ? patchProto(subgraphProto) : null;
         }, 500);
+
+        // Majoor-Assets-Manager patch //
+        const DND_MIME = "application/x-mjr-asset";
+        let justAppliedMetadata = false;
+        const highlightState = new WeakMap();
+
+        function getHighlightState(app) {
+            let state = highlightState.get(app);
+            if (!state) {
+                state = { node: null, prev: null };
+                highlightState.set(app, state);
+            }
+            return state;
+        }
+
+        function applyHighlight(app, node) {
+            const state = getHighlightState(app);
+            if (!node || state.node === node) return;
+            clearHighlight(app);
+            state.node = node;
+            state.prev = {
+                color: node.color,
+                bgcolor: node.bgcolor,
+            };
+            node.bgcolor = "#FFB533";
+            node.color = "#FFEAA9";
+            app.canvas.setDirty(true, true);
+        }
+
+        function clearHighlight(app) {
+            const state = getHighlightState(app);
+            if (!state.node) return;
+            try {
+                state.node.color = state.prev.color;
+                state.node.bgcolor = state.prev.bgcolor;
+            } catch { }
+            state.node = null;
+            state.prev = null;
+            app.canvas.setDirty(true, true);
+        }
+
+        function getNodeUnderClientXY(app, event) {
+            const canvasEl = document.querySelector('canvas');
+            if (!app?.canvas || !canvasEl) return null;
+            const rect = canvasEl.getBoundingClientRect();
+            const scale = app.canvas.ds?.scale ?? 1;
+            const offset = app.canvas.ds?.offset ?? [0, 0];
+            const x = (event.clientX - rect.left) / scale - offset[0];
+            const y = (event.clientY - rect.top) / scale - offset[1];
+            return app.canvas.graph.getNodeOnPos(x, y);
+        }
+
+        async function fetchWorkflowAndPrompt(payload) {
+            const viewUrl = `/api/view?filename=${encodeURIComponent(payload.filename)}&type=${encodeURIComponent(payload.type)}&subfolder=${encodeURIComponent(payload.subfolder || "")}`;
+            const response = await fetch(viewUrl);
+            if (!response.ok) return null;
+            const buffer = await response.arrayBuffer();
+            return extractMetaDataFromBuffer(buffer);
+        }
+
+        const onGlobalDragOver = (event) => {
+            if (!isFeatureEnabled()) return;
+            if (!event.dataTransfer?.types.includes(DND_MIME)) return;
+            let payload;
+            try {
+                const raw = event.dataTransfer.getData(DND_MIME);
+                if (!raw) return;
+                payload = JSON.parse(raw);
+            } catch { return; }
+            const node = getNodeUnderClientXY(app, event);
+            const droppedExt = String(payload.filename).split(".").pop() || "";
+            const widget = pickBestMediaPathWidget(node, payload, droppedExt);
+            if (node && !widget) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                applyHighlight(app, node);
+            } else {
+                clearHighlight(app);
+            }
+        };
+
+        const onGlobalDragLeave = () => {
+            clearHighlight(app);
+        };
+
+        const onGlobalDrop = async (event) => {
+            if (!isFeatureEnabled()) return;
+            if (!event.dataTransfer?.types.includes(DND_MIME)) return;
+            clearHighlight(app);
+            justAppliedMetadata = true;
+            let payload;
+            try {
+                const raw = event.dataTransfer.getData(DND_MIME);
+                if (!raw) return;
+                payload = JSON.parse(raw);
+            } catch { return; }
+            if (!payload?.filename) return;
+            const node = getNodeUnderClientXY(app, event);
+            if (!node) return;
+            const droppedExt = String(payload.filename).split(".").pop() || "";
+            const canAcceptFile =
+                !!pickBestMediaPathWidget(
+                    node,
+                    payload,
+                    droppedExt
+                );
+            if (canAcceptFile) {
+                return;
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const meta = await fetchWorkflowAndPrompt(payload);
+            if (meta?.workflow) {
+                await importMetaData(node, meta.workflow, meta.prompt, event);
+            }
+        };
+
+        const onGlobalDragEnd = (e) => {
+            if (justAppliedMetadata) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                justAppliedMetadata = false;
+            }
+        };
+
+        window.addEventListener("dragover", onGlobalDragOver, true);
+        window.addEventListener("dragleave", onGlobalDragLeave, true);
+        window.addEventListener('drop', onGlobalDrop, true);
+        window.addEventListener('dragend', onGlobalDragEnd, true);
     },
 });
 
@@ -1279,26 +1409,26 @@ export async function importMetaData(node, workflow, prompt, e) {
     return false;
 }
 // Majoor integration //
-export async function importMetaDataFromPayload(node, payload, e) {
-    if (!payload?.filename) return false;
-    console.log("Payload", payload);
-    const viewUrl = `/view?filename=${encodeURIComponent(payload.filename)}&type=${encodeURIComponent(payload.type || "output")}&subfolder=${encodeURIComponent(payload.subfolder || "")}`;
-    if (payload.root_id) {
-        viewUrl += `&root_id=${encodeURIComponent(payload.root_id)}`;
-    }
+// export async function importMetaDataFromPayload(node, payload, e) {
+//     if (!payload?.filename) return false;
+//     console.log("Payload", payload);
+//     const viewUrl = `/view?filename=${encodeURIComponent(payload.filename)}&type=${encodeURIComponent(payload.type || "output")}&subfolder=${encodeURIComponent(payload.subfolder || "")}`;
+//     if (payload.root_id) {
+//         viewUrl += `&root_id=${encodeURIComponent(payload.root_id)}`;
+//     }
 
-    const response = await fetch(viewUrl);
-    if (!response.ok) return false;
-    const buffer = await response.arrayBuffer();
-    const { workflow, prompt } = extractMetaDataFromBuffer(buffer);
-    if (!workflow) return false;
+//     const response = await fetch(viewUrl);
+//     if (!response.ok) return false;
+//     const buffer = await response.arrayBuffer();
+//     const { workflow, prompt } = extractMetaDataFromBuffer(buffer);
+//     if (!workflow) return false;
 
-    return importMetaData(node, workflow, prompt, e);
-}
+//     return importMetaData(node, workflow, prompt, e);
+// }
 
-if (isFeatureEnabled()) {
-    window.__dragAndDropMetaData = {
-        importMetaDataFromPayload: importMetaDataFromPayload,
-        isFeatureActive: isFeatureActive
-    }
-};
+// if (isFeatureEnabled()) {
+//     window.__dragAndDropMetaData = {
+//         importMetaDataFromPayload: importMetaDataFromPayload,
+//         isFeatureActive: isFeatureActive
+//     }
+// };
