@@ -44,12 +44,143 @@ function extractMetaDataFromBuffer(buffer) {
     };
 }
 
-function isFeatureEnabled() {
-    return app.ui.settings.getSettingValue("DnDMetadata.General.enable");
+// I+Drag //
+let iDrag = false;
+let iDragModeEnabled = false;
+
+const onKeyDown = (e) => {
+    if (e.key?.toLowerCase() === "i") {
+        iDrag = true;
+    }
+};
+
+const onKeyUp = (e) => {
+    if (e.key?.toLowerCase() === "i") {
+        iDrag = false;
+    }
+};
+
+const onBlur = () => {
+    iDrag = false;
+};
+
+function enableIDragMode() {
+    if (iDragModeEnabled) return;
+
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("keyup", onKeyUp, true);
+    window.addEventListener("blur", onBlur);
+
+    iDragModeEnabled = true;
 }
+
+function disableIDragMode() {
+    if (!iDragModeEnabled) return;
+
+    window.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("keyup", onKeyUp, true);
+    window.removeEventListener("blur", onBlur);
+
+    iDrag = false;
+    iDragModeEnabled = false;
+}
+
+function isFeatureEnabled() {
+    const mode = app.ui.settings.getSettingValue("DnDMetadata.General.mode");
+    if (mode === "off") return false;
+    return true;
+}
+
+function isFeatureActive() {
+    const mode = app.ui.settings.getSettingValue("DnDMetadata.General.mode");
+    if (mode === "off") return false;
+    if (mode === "i+drag") return iDrag;
+    return true;
+}
+// Settings //
+const hintSettings = [
+    ["1-Model", { WidgetHints: 2, DownstreamHints: 1, NodeHints: 1 }],
+    ["2-Lora", { WidgetHints: 1, DownstreamHints: 1, NodeHints: 2 }],
+    ["3-Prompt", { WidgetHints: 1, NodeHints: 1 }],
+    ["4-Positive", { WidgetHints: 1, DownstreamHints: 1, NodeHints: 3 }],
+    ["5-Negative", { WidgetHints: 1, DownstreamHints: 1, NodeHints: 3 }],
+    ["6-SamplerParams", { WidgetHints: 1, DownstreamHints: 1, NodeHints: 1 }],
+    ["7-Latent", { WidgetHints: 1, DownstreamHints: 1, NodeHints: 1 }],
+];
+
+function updateSingleResetButton(settingId, defaultValue, newValue) {
+    const row = document.querySelector(`[data-setting-id="${settingId}"]`);
+    const btn = row?.querySelector(".DnDMetaData-settings-resetButton-individual");
+    if (!btn) return;
+    btn.classList.toggle("nonDefault", newValue !== defaultValue);
+}
+
+function settingTemplate (group, name, DValue) {
+    const id = `DnDMetadata.${group}.${name}`;
+    return {
+        id: id,
+        name: name,
+        defaultValue: DValue,
+        type: "slider",
+        attrs: { min: 1, max: 5, step: 1 },
+        onChange: (newVal,) => {
+            updateSingleResetButton(id, DValue, newVal);
+        }
+    }
+}
+const SETTINGS = hintSettings.flatMap(([group, hints]) =>
+    Object.entries(hints).map(([name, DValue]) =>
+        settingTemplate(group, name, DValue)
+    )
+);
+SETTINGS.push(
+    {
+        id: "DnDMetadata.General.Accuracy",
+        name: "🎯 Accuracy",
+        defaultValue: 0,
+        type: "slider",
+        attrs: { min: 0, max: 5, step: 1 },
+        tooltip: "Filters out roles with a score lower than given number"
+    },
+    {
+        id: "DnDMetadata.General.multiRoleAccuracy",
+        name: "🎯 MultiRoleAccuracy",
+        defaultValue: 2,
+        type: "slider",
+        attrs: { min: 0, max: 5, step: 1 },
+        tooltip: "Filters out roles for multiRole with a score lower than given number"
+    },
+)
 
 app.registerExtension({
     name: "dragAndDrop_metaData",
+    settings: [
+        {
+            id: "DnDMetadata.General.mode",
+            name: "Activation mode",
+            type: "combo",
+            defaultValue: "i+drag",
+            options: [
+                { text: "auto", value: "auto" },
+                { text: "I+Drag", value: "i+drag" },
+                { text: "Off", value: "off" }
+            ],
+            tooltip: "Choose when to import metadata from PNG on drop.",
+            onChange: (newVal) => {
+                if (newVal === "i+drag") {
+                    enableIDragMode();
+                } else {
+                    disableIDragMode();
+                }
+            }
+        },
+        {
+            id: "DnDMetadata.ResetButton",
+            name: "Reset All Settings",
+            type: "text",
+        },
+        ...SETTINGS
+    ],
     // onDrag patch //
     async beforeRegisterNodeDef(nodeType) {
         const origOnDragDrop = nodeType.prototype.onDragDrop;
@@ -59,7 +190,7 @@ app.registerExtension({
             if (handled != null) {
                 return handled;
             }
-            return isFeatureEnabled();
+            return isFeatureActive();
         };
         nodeType.prototype.onDragDrop = async function (e) {
             const handled = await origOnDragDrop?.apply(this, arguments);
@@ -85,217 +216,19 @@ app.registerExtension({
             link.href = cssUrl;
             document.head.appendChild(link);
         }
-        // settings //
-        const SETTINGS = [
-            {
-                id: "DnDMetadata.General.Accuracy",
-                name: "🎯 Accuracy",
-                defaultValue: 0,
-                type: "slider",
-                attrs: { min: 0, max: 5, step: 1 },
-                tooltip: "Filters out roles with a score lower than given number"
-            },
-            {
-                id: "DnDMetadata.General.multiRoleAccuracy",
-                name: "🎯 MultiRoleAccuracy",
-                defaultValue: 2,
-                type: "slider",
-                attrs: { min: 0, max: 5, step: 1 },
-                tooltip: "Filters out roles for multiRole with a score lower than given number"
-            },
-            // Model //
-            {
-                id: "DnDMetadata.1-Model.WidgetHints",
-                name: "Widget Hints",
-                defaultValue: 2,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.1-Model.DownstreamHints",
-                name: "Downstream Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.1-Model.NodeHints",
-                name: "Node Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            // Lora //
-            {
-                id: "DnDMetadata.2-Lora.WidgetHints",
-                name: "Widget Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.2-Lora.DownstreamHints",
-                name: "Downstream Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.2-Lora.NodeHints",
-                name: "Node Hints",
-                defaultValue: 2,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            // Prompt //
-            {
-                id: "DnDMetadata.3-Prompt.WidgetHints",
-                name: "Widget Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.3-Prompt.NodeHints",
-                name: "Node Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            // Positive //
-            {
-                id: "DnDMetadata.4-Positive.WidgetHints",
-                name: "Widget Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.4-Positive.DownstreamHints",
-                name: "Downstream Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.4-Positive.NodeHints",
-                name: "Node Hints",
-                defaultValue: 3,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            // Negative //
-            {
-                id: "DnDMetadata.5-Negative.WidgetHints",
-                name: "Widget Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.5-Negative.DownstreamHints",
-                name: "Downstream Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.5-Negative.NodeHints",
-                name: "Node Hints",
-                defaultValue: 3,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            // SamplerParams //
-            {
-                id: "DnDMetadata.6-SamplerParams.WidgetHints",
-                name: "Widget Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.6-SamplerParams.DownstreamHints",
-                name: "Downstream Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.6-SamplerParams.NodeHints",
-                name: "Node Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            // Latent //
-            {
-                id: "DnDMetadata.7-Latent.WidgetHints",
-                name: "Widget Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.7-Latent.DownstreamHints",
-                name: "Downstream Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-            {
-                id: "DnDMetadata.7-Latent.NodeHints",
-                name: "Node Hints",
-                defaultValue: 1,
-                type: "slider",
-                attrs: { min: 1, max: 5, step: 1 },
-            },
-        ];
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.ResetButton",
-            name: "Reset All Settings",
-            type: "text",
-        });
-        app.ui.settings.addSetting({
-            id: "DnDMetadata.General.enable",
-            name: "Enable Drag & Drop Metadata Import",
-            defaultValue: true,
-            type: "boolean",
-            tooltip: "When enabled, dragging PNG with embedded workflow onto non-media nodes will import widget values."
-        });
-        SETTINGS.forEach(setting => {
-            app.ui.settings.addSetting(setting);
-        });
+        // Settings buttons //
         function injectResetButton() {
-            const row = document.querySelector(
-                '[data-setting-id="DnDMetadata.ResetButton"]'
-            );
-            if (!row || row.dataset.injected) {
-                return;
-            }
+            const row = document.querySelector('[data-setting-id="DnDMetadata.ResetButton"]');
+            if (!row || row.dataset.injected) return;
             row.dataset.injected = "true";
             const inputContainer = row.querySelector(".form-input");
-            if (!inputContainer) {
-                return;
-            }
+            if (!inputContainer) return;
             inputContainer.innerHTML = "";
-            const button = document.createElement("button");
-            button.textContent = "Reset Settings";
-            button.style.padding = "6px 12px";
-            button.style.cursor = "pointer";
-            button.style.borderRadius = "8px";
-            button.style.border = "none";
-            button.style.background = "#3b82f6";
-            button.style.color = "white";
-            button.style.fontWeight = "600";
-            button.style.transition = "all 0.15s ease";
-            button.onmouseenter = () => {
-                button.style.filter = "brightness(1.1)";
-            };
-            button.onmouseleave = () => {
-                button.style.filter = "brightness(1)";
-            };
-            button.onclick = async () => {
+
+            const resetBtnM = document.createElement("button");
+            resetBtnM.classList.add("DnDMetaData-settings-resetButton-main");
+            resetBtnM.textContent = "Reset Settings";
+            resetBtnM.onclick = async () => {
                 for (const setting of SETTINGS) {
                     await app.ui.settings.setSettingValue(
                         setting.id,
@@ -303,43 +236,26 @@ app.registerExtension({
                     );
                 }
             };
-            inputContainer.appendChild(button);
+            inputContainer.appendChild(resetBtnM);
         };
-        function updateResetButtonState(button, setting) {
-            const currentValue = app.ui.settings.getSettingValue(setting.id);
-            const changed = currentValue !== setting.defaultValue;
-            button.style.boxShadow = changed
-                ? "0 0 6px rgba(151, 151, 151, 0.8)"
-                : "none";
-            button.style.opacity = changed ? "1" : "0.5";
-        }
+
         function injectIndividualResetButtons() {
             for (const setting of SETTINGS) {
-                const row = document.querySelector(
-                    `[data-setting-id="${setting.id}"]`
-                );
-                if (!row || row.dataset.resetInjected) {
-                    continue;
-                }
+                const row = document.querySelector(`[data-setting-id="${setting.id}"]`);
+                if (!row || row.dataset.resetInjected) continue;
                 row.dataset.resetInjected = "true";
                 const inputContainer = row.querySelector(".form-input");
-                if (!inputContainer) {
-                    continue;
-                }
+                if (!inputContainer) continue;
+
                 const resetBtn = document.createElement("button");
-                resetBtn.className = "dnd-reset-btn";
+                resetBtn.classList.add("DnDMetaData-settings-resetButton-individual");
                 resetBtn.innerHTML = "↺";
                 resetBtn.title = "Reset to default";
-                resetBtn.style.marginLeft = "8px";
-                resetBtn.style.width = "22px";
-                resetBtn.style.height = "22px";
-                resetBtn.style.borderRadius = "999px";
-                resetBtn.style.border = "none";
-                resetBtn.style.cursor = "pointer";
-                resetBtn.style.fontSize = "12px";
-                resetBtn.style.flexShrink = "0";
-                resetBtn.style.transition = "all 0.15s ease";
-                updateResetButtonState(resetBtn, setting);
+                const currentValue = app.ui.settings.getSettingValue(setting.id);
+                resetBtn.classList.toggle(
+                    "nonDefault",
+                    currentValue !== setting.defaultValue
+                );
                 resetBtn.onclick = async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -347,23 +263,14 @@ app.registerExtension({
                         setting.id,
                         setting.defaultValue
                     );
-                    updateResetButtonState(resetBtn, setting);
                 };
                 inputContainer.appendChild(resetBtn);
             }
         };
-        function refreshResetButtons() {
-            for (const setting of SETTINGS) {
-                const row = document.querySelector(`[data-setting-id="${setting.id}"]`);
-                const btn = row?.querySelector(".dnd-reset-btn");
-                if (!btn) continue;
-                updateResetButtonState(btn, setting);
-            }
-        }
+
         const observer = new MutationObserver(() => {
             injectResetButton();
             injectIndividualResetButtons();
-            refreshResetButtons();
         });
         observer.observe(document.body, {
             childList: true,
@@ -1374,7 +1281,7 @@ export async function importMetaData(node, workflow, prompt, e) {
 // Majoor integration //
 export async function importMetaDataFromPayload(node, payload, e) {
     if (!payload?.filename) return false;
-
+    console.log("Payload", payload);
     const viewUrl = `/view?filename=${encodeURIComponent(payload.filename)}&type=${encodeURIComponent(payload.type || "output")}&subfolder=${encodeURIComponent(payload.subfolder || "")}`;
     if (payload.root_id) {
         viewUrl += `&root_id=${encodeURIComponent(payload.root_id)}`;
@@ -1391,6 +1298,7 @@ export async function importMetaDataFromPayload(node, payload, e) {
 
 if (isFeatureEnabled()) {
     window.__dragAndDropMetaData = {
-        importMetaDataFromPayload: importMetaDataFromPayload
+        importMetaDataFromPayload: importMetaDataFromPayload,
+        isFeatureActive: isFeatureActive
     }
 };
