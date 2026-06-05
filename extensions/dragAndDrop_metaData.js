@@ -153,6 +153,8 @@ SETTINGS.push(
     },
 )
 
+const DND_MIME = "application/x-mjr-asset";
+
 app.registerExtension({
     name: "dragAndDrop_metaData",
     settings: [
@@ -191,7 +193,8 @@ app.registerExtension({
             if (handled != null) {
                 return handled;
             }
-            return isFeatureActive();
+            if (e.dataTransfer?.types.includes(DND_MIME)) return isFeatureActive();
+            return isFeatureEnabled();
         };
         nodeType.prototype.onDragDrop = async function (e) {
             const handled = await origOnDragDrop?.apply(this, arguments);
@@ -296,6 +299,7 @@ app.registerExtension({
                 if (handled === true) {
                     return true;
                 }
+                if (e.dataTransfer?.types.includes(DND_MIME)) return isFeatureActive();
                 return isFeatureEnabled();
             };
             proto.onDragDrop = async function (e) {
@@ -326,7 +330,6 @@ app.registerExtension({
         }, 500);
 
         // Majoor-Assets-Manager patch //
-        const DND_MIME = "application/x-mjr-asset";
         let justAppliedMetadata = false;
         const highlightState = new WeakMap();
 
@@ -386,6 +389,7 @@ app.registerExtension({
 
         const onGlobalDragOver = (event) => {
             if (!isFeatureEnabled()) return;
+            if (!isFeatureActive()) return;
             if (!event.dataTransfer?.types.includes(DND_MIME)) return;
             let payload;
             try {
@@ -411,6 +415,7 @@ app.registerExtension({
 
         const onGlobalDrop = async (event) => {
             if (!isFeatureEnabled()) return;
+            if (!isFeatureActive()) return;
             if (!event.dataTransfer?.types.includes(DND_MIME)) return;
             clearHighlight(app);
             justAppliedMetadata = true;
