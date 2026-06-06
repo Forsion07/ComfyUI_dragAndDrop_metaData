@@ -1014,7 +1014,6 @@ function keepInsideViewport(element) {
         element.style.top = newTop + 'px';
     } else {
         element.style.top = SCREEN_MARGIN + 'px';
-        element.style.maxHeight = (window.innerHeight - 2 * SCREEN_MARGIN) + 'px';
     }
 }
 
@@ -1111,7 +1110,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         let selectedValue = null;
         let selectedWidgetEl = null;
         const mapping = {};
-        const nodeFlash = (el) => {
+        const MenuNodeFlash = (el) => {
             if (!el) return;
             el.classList.remove("flash-apply");
             void el.offsetWidth;
@@ -1169,8 +1168,8 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                     let valText = String(selectedValue);
                     if (typeof selectedValue === 'object') valText = "[Object]";
                     valueSpan.textContent = valText.length > 25 ? ` → ${valText.slice(0, 25)}...` : ` → ${valText}`;
-                    nodeFlash(selectedWidgetEl.querySelector(".widget-value"));
-                    nodeFlash(slot);
+                    MenuNodeFlash(selectedWidgetEl.querySelector(".widget-value"));
+                    MenuNodeFlash(slot);
                     if (selectedWidgetEl) {
                         selectedWidgetEl.classList.remove("selected");
                         selectedWidgetEl = null;
@@ -1292,8 +1291,8 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                             if (typeof val === 'object') valText = "[Object]";
                             pSlot.valueSpan.textContent = valText.length > 25 ? ` → ${valText.slice(0, 25)}...` : ` → ${valText}`;
                             preventImmediateHover(pSlot.slot);
-                            nodeFlash(widgetLine.querySelector(".widget-value"));
-                            nodeFlash(pSlot.slot);
+                            MenuNodeFlash(widgetLine.querySelector(".widget-value"));
+                            MenuNodeFlash(pSlot.slot);
                         }
                         if (selectedWidgetEl) {
                             selectedWidgetEl.classList.remove('selected');

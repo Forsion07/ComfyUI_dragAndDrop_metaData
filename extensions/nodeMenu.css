@@ -17,6 +17,7 @@
     padding: 12px !important;
     color: #eee !important;
     background-attachment: local !important;
+    max-height: calc(100vh - 16px);
     overflow-y: auto;
     will-change: transform, opacity, filter;
     transform-origin: top center;
@@ -75,6 +76,9 @@
     padding-bottom: 6px;
     flex-shrink: 0 !important;
     user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #DnDMetaData-nodeMenu::-webkit-scrollbar {
