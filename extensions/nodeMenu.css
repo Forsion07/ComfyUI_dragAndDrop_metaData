@@ -347,3 +347,53 @@
     opacity: 1;
     box-shadow: 0 0 6px rgba(151, 151, 151, 0.8);
 }
+.DnDMetaData-node-flash {
+    position: fixed;
+    pointer-events: none;
+}
+.DnDMetaData-node-flash.success {
+
+    border-radius: 12px;
+
+    border: 2px solid #66ff99;
+
+    box-shadow:
+        0 0 12px #66ff99,
+        inset 0 0 12px #66ff99;
+
+    animation: dndNodeFlash 500ms ease-out forwards;
+}
+
+@keyframes dndNodeFlash {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.08);
+    }
+}
+
+.DnDMetaData-node-flash.fail {
+    border-radius: 12px;
+
+    background: rgba(255, 60, 60, 0.35);
+
+    box-shadow:
+        0 0 12px rgba(255, 60, 60, 0.9),
+        inset 0 0 12px rgba(255, 60, 60, 0.7);
+
+    animation: dndNodeFlashFail 500ms ease-out forwards;
+}
+
+@keyframes dndNodeFlashFail {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}

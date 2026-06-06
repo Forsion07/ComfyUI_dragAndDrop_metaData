@@ -1056,7 +1056,7 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
         let selectedValue = null;
         let selectedWidgetEl = null;
         const mapping = {};
-        const triggerFlash = (el) => {
+        const nodeFlash = (el) => {
             if (!el) return;
             el.classList.remove("flash-apply");
             void el.offsetWidth;
@@ -1114,8 +1114,8 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                     let valText = String(selectedValue);
                     if (typeof selectedValue === 'object') valText = "[Object]";
                     valueSpan.textContent = valText.length > 25 ? ` → ${valText.slice(0, 25)}...` : ` → ${valText}`;
-                    triggerFlash(selectedWidgetEl.querySelector(".widget-value"));
-                    triggerFlash(slot);
+                    nodeFlash(selectedWidgetEl.querySelector(".widget-value"));
+                    nodeFlash(slot);
                     if (selectedWidgetEl) {
                         selectedWidgetEl.classList.remove("selected");
                         selectedWidgetEl = null;
@@ -1237,8 +1237,8 @@ async function chooseNodeFromCandidates(candidates, targetNode, e, graphCtx) {
                             if (typeof val === 'object') valText = "[Object]";
                             pSlot.valueSpan.textContent = valText.length > 25 ? ` → ${valText.slice(0, 25)}...` : ` → ${valText}`;
                             preventImmediateHover(pSlot.slot);
-                            triggerFlash(widgetLine.querySelector(".widget-value"));
-                            triggerFlash(pSlot.slot);
+                            nodeFlash(widgetLine.querySelector(".widget-value"));
+                            nodeFlash(pSlot.slot);
                         }
                         if (selectedWidgetEl) {
                             selectedWidgetEl.classList.remove('selected');
@@ -1367,8 +1367,58 @@ function applyCandidateToNode(targetNode, result) {
     });
 }
 
+function nodeFlash(node, mode = "succes") {
+
+    const flash = document.createElement("div");
+    flash.className = "DnDMetaData-node-flash";
+    if (mode === "fail") {
+        flash.classList.add("fail");
+    } else {
+        flash.classList.add("success");
+    }
+    document.body.appendChild(flash);
+
+    const start = performance.now();
+    const duration = 500;
+    const titleHeight = LiteGraph.NODE_TITLE_HEIGHT;
+
+    function update() {
+        const canvas = app.canvas.canvas;
+        const rect = canvas.getBoundingClientRect();
+        const scale = app.canvas.ds.scale;
+        const offset = app.canvas.ds.offset;
+
+        flash.style.left =
+            rect.left +
+            (node.pos[0] + offset[0]) * scale +
+            "px";
+
+        flash.style.top =
+            rect.top +
+            (node.pos[1] + offset[1]) * scale -
+            titleHeight * scale +
+            "px";
+
+        flash.style.width =
+            node.size[0] * scale + "px";
+
+        flash.style.height =
+            (node.size[1] + titleHeight) * scale + "px";
+
+        if (performance.now() - start < duration) {
+            requestAnimationFrame(update);
+        } else {
+            flash.remove();
+        }
+    }
+    update();
+}
+
 export async function importMetaData(node, workflow, prompt, e) {
-    if (!workflow || !node.widgets?.length || !isFeatureEnabled()) return false;
+    if (!workflow || !node.widgets?.length || !isFeatureEnabled()) {
+        nodeFlash(node, "fail");
+        return false;
+    };
 
     const graphCtx = buildGraphCtx(workflow, prompt);
     const hasWidgetValues = (n) => Array.isArray(n.widgets_values) && n.widgets_values.length > 0;
@@ -1389,10 +1439,12 @@ export async function importMetaData(node, workflow, prompt, e) {
 
     if (strictCandidates.length === 1) {
         applyCandidateToNode(node, strictCandidates[0]);
+        nodeFlash(node);
         return true;
     }
     if (roleCandidates.length === 1 && isCompatible(node, roleCandidates[0])) {
         applyCandidateToNode(node, roleCandidates[0]);
+        nodeFlash(node);
         return true;
     }
     if (roleCandidates.length > 1 || (roleCandidates.length === 1 && !isCompatible(node, roleCandidates[0]))) {
@@ -1400,7 +1452,10 @@ export async function importMetaData(node, workflow, prompt, e) {
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
         if (chosen?.action && chosen.action !== "cancelled") {
             applyCandidateToNode(node, chosen);
-        }
+            nodeFlash(node);
+        } else {
+            nodeFlash(node, "fail");
+        };
         return true;
     }
     if (strictCandidates.length > 1) {
@@ -1408,9 +1463,13 @@ export async function importMetaData(node, workflow, prompt, e) {
         const chosen = await chooseNodeFromCandidates(menuItems, node, e, graphCtx);
         if (chosen?.action && chosen.action !== "cancelled") {
             applyCandidateToNode(node, chosen);
-        }
+            nodeFlash(node);
+        } else {
+            nodeFlash(node, "fail");
+        };
         return true;
     }
+    nodeFlash(node, "fail");
     return false;
 }
 // Majoor integration //
