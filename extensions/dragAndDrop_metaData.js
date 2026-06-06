@@ -188,7 +188,10 @@ SETTINGS.push(
         defaultValue: 0,
         type: "slider",
         attrs: { min: 0, max: 5, step: 1 },
-        tooltip: "Filters out roles with a score lower than given number"
+        tooltip: "Filters out roles with a score lower than given number",
+        onChange: (newVal,) => {
+            updateSingleResetButton("DnDMetadata.General.Accuracy", 0, newVal);
+        }
     },
     {
         id: "DnDMetadata.General.multiRoleAccuracy",
@@ -196,7 +199,10 @@ SETTINGS.push(
         defaultValue: 2,
         type: "slider",
         attrs: { min: 0, max: 5, step: 1 },
-        tooltip: "Filters out roles for multiRole with a score lower than given number"
+        tooltip: "Filters out roles for multiRole with a score lower than given number",
+        onChange: (newVal,) => {
+            updateSingleResetButton("DnDMetadata.General.multiRoleAccuracy", 2, newVal);
+        }
     },
 )
 
