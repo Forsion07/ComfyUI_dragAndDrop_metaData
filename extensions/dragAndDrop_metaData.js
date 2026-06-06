@@ -45,6 +45,53 @@ function extractMetaDataFromBuffer(buffer) {
     };
 }
 
+function nodeFlash(node, mode = "succes") {
+
+    const flash = document.createElement("div");
+    flash.className = "DnDMetaData-node-flash";
+    if (mode === "fail") {
+        flash.classList.add("fail");
+    } else {
+        flash.classList.add("success");
+    }
+    document.body.appendChild(flash);
+
+    const start = performance.now();
+    const duration = 500;
+    const titleHeight = LiteGraph.NODE_TITLE_HEIGHT;
+
+    function update() {
+        const canvas = app.canvas.canvas;
+        const rect = canvas.getBoundingClientRect();
+        const scale = app.canvas.ds.scale;
+        const offset = app.canvas.ds.offset;
+
+        flash.style.left =
+            rect.left +
+            (node.pos[0] + offset[0]) * scale +
+            "px";
+
+        flash.style.top =
+            rect.top +
+            (node.pos[1] + offset[1]) * scale -
+            titleHeight * scale +
+            "px";
+
+        flash.style.width =
+            node.size[0] * scale + "px";
+
+        flash.style.height =
+            (node.size[1] + titleHeight) * scale + "px";
+
+        if (performance.now() - start < duration) {
+            requestAnimationFrame(update);
+        } else {
+            flash.remove();
+        }
+    }
+    update();
+}
+
 // I+Drag //
 let iDrag = false;
 let iDragModeEnabled = false;
@@ -199,7 +246,10 @@ app.registerExtension({
         nodeType.prototype.onDragDrop = async function (e) {
             const handled = await origOnDragDrop?.apply(this, arguments);
             const files = e.dataTransfer?.files;
-            if (!files?.length) return handled;
+            if (!files?.length) {
+                nodeFlash(node, "fail");
+                return handled;
+            }
             const buffer = await files[0].arrayBuffer();
             const { workflow, prompt } = extractMetaDataFromBuffer(buffer);
             if (workflow) {
@@ -308,7 +358,10 @@ app.registerExtension({
                     return true;
                 }
                 const files = e.dataTransfer?.files;
-                if (!files?.length) return handled;
+                if (!files?.length) {
+                    nodeFlash(node, "fail");
+                    return handled;
+                };
                 const buffer = await files[0].arrayBuffer();
                 const { workflow, prompt } = extractMetaDataFromBuffer(buffer);
                 if (workflow) {
@@ -443,6 +496,8 @@ app.registerExtension({
             const meta = await fetchWorkflowAndPrompt(payload);
             if (meta?.workflow) {
                 await importMetaData(node, meta.workflow, meta.prompt, event);
+            } else {
+                nodeFlash(node, "fail");
             }
         };
 
@@ -1365,53 +1420,6 @@ function applyCandidateToNode(targetNode, result) {
         title: targetNode.title,
         widgets_values: next
     });
-}
-
-function nodeFlash(node, mode = "succes") {
-
-    const flash = document.createElement("div");
-    flash.className = "DnDMetaData-node-flash";
-    if (mode === "fail") {
-        flash.classList.add("fail");
-    } else {
-        flash.classList.add("success");
-    }
-    document.body.appendChild(flash);
-
-    const start = performance.now();
-    const duration = 500;
-    const titleHeight = LiteGraph.NODE_TITLE_HEIGHT;
-
-    function update() {
-        const canvas = app.canvas.canvas;
-        const rect = canvas.getBoundingClientRect();
-        const scale = app.canvas.ds.scale;
-        const offset = app.canvas.ds.offset;
-
-        flash.style.left =
-            rect.left +
-            (node.pos[0] + offset[0]) * scale +
-            "px";
-
-        flash.style.top =
-            rect.top +
-            (node.pos[1] + offset[1]) * scale -
-            titleHeight * scale +
-            "px";
-
-        flash.style.width =
-            node.size[0] * scale + "px";
-
-        flash.style.height =
-            (node.size[1] + titleHeight) * scale + "px";
-
-        if (performance.now() - start < duration) {
-            requestAnimationFrame(update);
-        } else {
-            flash.remove();
-        }
-    }
-    update();
 }
 
 export async function importMetaData(node, workflow, prompt, e) {
