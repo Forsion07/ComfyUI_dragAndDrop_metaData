@@ -1,5 +1,5 @@
 import { app } from "../../scripts/app.js";
-import { pickBestMediaPathWidget } from "./Majoor-functions.js";
+import { pickBestMediaPathWidget, getInputSlotUnderClientXY } from "./MjrFunctions/Majoor-functions.js";
 
 function extractMetaDataFromBuffer(buffer) {
     const view = new DataView(buffer);
@@ -243,9 +243,7 @@ app.registerExtension({
         const origOnDragOver = nodeType.prototype.onDragOver;
         nodeType.prototype.onDragOver = function (e) {
             const handled = origOnDragOver?.apply(this, arguments);
-            if (handled != null) {
-                return handled;
-            }
+            if (handled != null) return handled;
             if (e.dataTransfer?.types.includes(DND_MIME)) return isFeatureActive();
             return isFeatureEnabled();
         };
@@ -352,17 +350,13 @@ app.registerExtension({
             const origOver = proto.onDragOver;
             proto.onDragOver = function (e) {
                 const handled = origOver?.apply(this, arguments);
-                if (handled === true) {
-                    return true;
-                }
+                if (handled === true) return true;
                 if (e.dataTransfer?.types.includes(DND_MIME)) return isFeatureActive();
                 return isFeatureEnabled();
             };
             proto.onDragDrop = async function (e) {
                 const handled = await origDrop?.apply(this, arguments);
-                if (handled === true) {
-                    return true;
-                }
+                if (handled === true) return true;
                 const files = e.dataTransfer?.files;
                 if (!files?.length) {
                     nodeFlash(node, "fail");
@@ -391,6 +385,13 @@ app.registerExtension({
         // Majoor-Assets-Manager patch //
         let justAppliedMetadata = false;
         const highlightState = new WeakMap();
+        let savedColors = null;
+
+        const isHighlight = (color, bgcolor) => {
+            const c = String(color ?? "").toLowerCase();
+            const b = String(bgcolor ?? "").toLowerCase();
+            return (c === "#ffeaa9" && b === "#ffb533") || (c === "#a9c4ff" && b === "#3355ff");
+        };
 
         function getHighlightState(app) {
             let state = highlightState.get(app);
@@ -406,10 +407,13 @@ app.registerExtension({
             if (!node || state.node === node) return;
             clearHighlight(app);
             state.node = node;
-            state.prev = {
-                color: node.color,
-                bgcolor: node.bgcolor,
-            };
+            if (savedColors?.node === node) {
+                state.prev = { color: savedColors.color, bgcolor: savedColors.bgcolor };
+            } else if (!isHighlight(node.color, node.bgcolor)) {
+                state.prev = { color: node.color, bgcolor: node.bgcolor };
+            } else {
+                state.prev = null;
+            }
             node.bgcolor = "#FFB533";
             node.color = "#FFEAA9";
             app.canvas.setDirty(true, true);
@@ -419,8 +423,10 @@ app.registerExtension({
             const state = getHighlightState(app);
             if (!state.node) return;
             try {
-                state.node.color = state.prev.color;
-                state.node.bgcolor = state.prev.bgcolor;
+                if (state.prev) {
+                    state.node.color = state.prev.color;
+                    state.node.bgcolor = state.prev.bgcolor;
+                }
             } catch { }
             state.node = null;
             state.prev = null;
@@ -447,7 +453,7 @@ app.registerExtension({
         }
 
         const onGlobalDragOver = (event) => {
-            if (!isFeatureEnabled()) return;
+            //if (!isFeatureEnabled()) return;
             if (!isFeatureActive()) return;
             if (!event.dataTransfer?.types.includes(DND_MIME)) return;
             let payload;
@@ -457,9 +463,13 @@ app.registerExtension({
                 payload = JSON.parse(raw);
             } catch { return; }
             const node = getNodeUnderClientXY(app, event);
+            if (node && !isHighlight(node.color, node.bgcolor)) {
+                savedColors = { node, color: node.color, bgcolor: node.bgcolor };
+            }
             const droppedExt = String(payload.filename).split(".").pop() || "";
-            const widget = pickBestMediaPathWidget(node, payload, droppedExt);
-            if (node && !widget) {
+            const slotInfo = node ? getInputSlotUnderClientXY(app, node, event.clientX, event.clientY) : null;
+            const widget = node && !slotInfo ? pickBestMediaPathWidget(node, payload, droppedExt) : null;
+            if (node && !slotInfo && !widget) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 applyHighlight(app, node);
@@ -486,15 +496,11 @@ app.registerExtension({
             } catch { return; }
             if (!payload?.filename) return;
             const node = getNodeUnderClientXY(app, event);
+            const slotInfo = node ? getInputSlotUnderClientXY(app, node, event.clientX, event.clientY) : null;
             if (!node) return;
             const droppedExt = String(payload.filename).split(".").pop() || "";
-            const canAcceptFile =
-                !!pickBestMediaPathWidget(
-                    node,
-                    payload,
-                    droppedExt
-                );
-            if (canAcceptFile) {
+            const widget = node && !slotInfo ? pickBestMediaPathWidget(node, payload, droppedExt) : null;
+            if (widget || slotInfo) {
                 return;
             }
             event.preventDefault();
